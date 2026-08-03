@@ -1,0 +1,19 @@
+{
+  "name": "junta-vecinal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo para el proyecto Junta Vecinal",
+  "scripts": {
+    "dev": "npm run dev:frontend & npm run dev:backend",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "start:frontend": "npm --prefix frontend run start",
+    "start:backend": "npm --prefix backend run start",
+    "install:all": "npm --prefix frontend install && npm --prefix backend install"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+}
