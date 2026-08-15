@@ -4,6 +4,130 @@ import React, { useState, useEffect } from "react";
 
 export default function DashboardVecinosPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedManzano, setSelectedManzano] = useState("Todas las Manzanas");
+
+  const [vecinos, setVecinos] = useState([]);
+
+  // 1. Obtener los vecinos del backend al cargar el componente
+  useEffect(() => {
+    const fetchVecinos = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/vecinos");
+        if (response.ok) {
+          const data = await response.json();
+          // Mapeamos los datos para adaptarlos al formato visual de la tabla
+          const vecinosMapeados = data.map((vecino: any) => {
+            const nombreVecino = vecino.nombre || "";
+            const iniciales = nombreVecino
+              .split(" ")
+              .filter(Boolean)
+              .map((n: string) => n[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2);
+
+            return {
+              ...vecino,
+              tipoEstado:
+                vecino.estado_cuenta === "Moroso" ? "danger" : "success",
+              estado: vecino.estado_cuenta || "Al día",
+              saldo: `Bs. ${vecino.saldo || "0.00"}`,
+              iniciales: iniciales || "VN",
+            };
+          });
+          setVecinos(vecinosMapeados);
+        } else {
+          console.error("Error al obtener los vecinos del servidor");
+        }
+      } catch (error) {
+        console.error("Error de red al conectar con el backend:", error);
+      }
+    };
+
+    fetchVecinos();
+  }, []);
+
+  // Estados del formulario correspondientes a la estructura de la base de datos
+  const [formData, setFormData] = useState({
+    nombre: "",
+    ci: "",
+    telefono: "",
+    manzano: "",
+    lote: "",
+    direccion: "",
+    estado_cuenta: "Al día",
+    saldo: "0.00",
+  });
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmitVecino = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch("http://localhost:5000/api/vecinos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const nuevoVecino = data.vecino || data;
+        const nombreVecino = nuevoVecino.nombre || formData.nombre;
+
+        const iniciales = nombreVecino
+          .split(" ")
+          .filter(Boolean)
+          .map((n: string) => n[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2);
+
+        setVecinos((prev) => [
+          ...prev,
+          {
+            ...nuevoVecino,
+            id: nuevoVecino.id || Date.now(),
+            nombre: nombreVecino,
+            ci: nuevoVecino.ci || formData.ci,
+            manzano: nuevoVecino.manzano || formData.manzano,
+            lote: nuevoVecino.lote || formData.lote,
+            ubicacion: nuevoVecino.manzano || formData.manzano,
+            detalleUbicacion: `Lote ${nuevoVecino.lote || formData.lote}`,
+            estado:
+              nuevoVecino.estado_cuenta || formData.estado_cuenta || "Al día",
+            tipoEstado: "success",
+            saldo: `Bs. ${nuevoVecino.saldo || formData.saldo || "0.00"}`,
+            iniciales,
+          },
+        ]);
+
+        setIsModalOpen(false);
+        setFormData({
+          nombre: "",
+          ci: "",
+          telefono: "",
+          manzano: "",
+          lote: "",
+          direccion: "",
+          estado_cuenta: "Al día",
+          saldo: "0.00",
+        });
+      } else {
+        alert("Error al guardar el vecino en el servidor.");
+      }
+    } catch (error) {
+      console.error("Error de red o backend no disponible:", error);
+    }
+  };
 
   const toggleModal = () => {
     setIsModalOpen(!isModalOpen);
@@ -17,7 +141,6 @@ export default function DashboardVecinosPage() {
     }
   }, [isModalOpen]);
 
-  // Cerrar modal con la tecla Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -30,7 +153,6 @@ export default function DashboardVecinosPage() {
 
   return (
     <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] font-sans antialiased">
-      {/* Google Material Symbols Link Injection for safety */}
       <link
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         rel="stylesheet"
@@ -132,15 +254,6 @@ export default function DashboardVecinosPage() {
             className="flex items-center gap-3 px-3 py-3 text-slate-600 hover:bg-slate-100 rounded-lg transition-all group"
           >
             <span className="material-symbols-outlined group-hover:text-[#00288e]">
-              construction
-            </span>
-            <span className="font-medium text-sm">Proyectos</span>
-          </a>
-          <a
-            href="#"
-            className="flex items-center gap-3 px-3 py-3 text-slate-600 hover:bg-slate-100 rounded-lg transition-all group"
-          >
-            <span className="material-symbols-outlined group-hover:text-[#00288e]">
               assessment
             </span>
             <span className="font-medium text-sm">Reportes</span>
@@ -158,7 +271,6 @@ export default function DashboardVecinosPage() {
       {/* Main Content Canvas */}
       <main className="lg:ml-64 min-h-screen pb-24 md:pb-8">
         <div className="max-w-[1280px] mx-auto px-4 md:px-8 py-8">
-          {/* Page Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
             <div>
               <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
@@ -178,7 +290,7 @@ export default function DashboardVecinosPage() {
             </button>
           </div>
 
-          {/* Dashboard Stats Summary */}
+          {/* Stats Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-6">
               <div className="w-12 h-12 rounded-full bg-[#dde1ff] text-[#00288e] flex items-center justify-center">
@@ -188,25 +300,34 @@ export default function DashboardVecinosPage() {
                 <p className="text-xs text-slate-500 font-medium">
                   Total Vecinos
                 </p>
-                <p className="text-xl font-bold text-slate-900">142</p>
+                <p className="text-xl font-bold text-slate-900">
+                  {vecinos.length}
+                </p>
               </div>
             </div>
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-6">
-              <div className="w-12 h-12 rounded-full bg-[#6cf8bb] text-[#002113] flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-[#DCFCE7] text-[#166534] flex items-center justify-center">
                 <span className="material-symbols-outlined">check_circle</span>
               </div>
               <div>
                 <p className="text-xs text-slate-500 font-medium">Al día</p>
-                <p className="text-xl font-bold text-slate-900">118</p>
+                <p className="text-xl font-bold text-slate-900">
+                  {
+                    vecinos.filter((v: any) => v.tipoEstado === "success")
+                      .length
+                  }
+                </p>
               </div>
             </div>
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-6">
-              <div className="w-12 h-12 rounded-full bg-[#ffdad6] text-[#93000a] flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-[#FEE2E2] text-[#991B1B] flex items-center justify-center">
                 <span className="material-symbols-outlined">warning</span>
               </div>
               <div>
                 <p className="text-xs text-slate-500 font-medium">En Mora</p>
-                <p className="text-xl font-bold text-slate-900">24</p>
+                <p className="text-xl font-bold text-slate-900">
+                  {vecinos.filter((v: any) => v.tipoEstado === "danger").length}
+                </p>
               </div>
             </div>
           </div>
@@ -219,27 +340,28 @@ export default function DashboardVecinosPage() {
               </span>
               <input
                 type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Buscar por nombre o CI..."
                 className="w-full pl-12 pr-4 py-2 rounded-lg border border-slate-300 focus:border-[#00288e] focus:ring-1 focus:ring-[#00288e] outline-none transition-all text-sm"
               />
             </div>
             <div className="flex gap-3 w-full md:w-auto">
-              <select className="flex-1 md:flex-none py-2 px-4 rounded-lg border border-slate-300 text-sm bg-white outline-none">
+              <select
+                value={selectedManzano}
+                onChange={(e) => setSelectedManzano(e.target.value)}
+                className="flex-1 md:flex-none py-2 px-4 rounded-lg border border-slate-300 text-sm bg-white outline-none"
+              >
                 <option>Todas las Manzanas</option>
-                <option>Manzano 1</option>
                 <option>Manzano 2</option>
                 <option>Manzano 3</option>
+                <option>Manzano 4</option>
+                <option>d-3</option>
               </select>
-              <button className="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1 hover:bg-slate-200 transition-colors">
-                <span className="material-symbols-outlined text-sm">
-                  filter_list
-                </span>
-                Filtros
-              </button>
             </div>
           </div>
 
-          {/* Interactive Table Container */}
+          {/* Table Container */}
           <div className="bg-white border border-slate-200 rounded-b-xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -264,192 +386,90 @@ export default function DashboardVecinosPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-sm">
-                  {/* Row 1 */}
-                  <tr className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#dde1ff] text-[#00288e] font-bold flex items-center justify-center text-xs">
-                          AM
-                        </div>
-                        <div className="font-semibold text-slate-900">
-                          Alejandro Morales
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">5928341 LP.</td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-slate-900">
-                        Manzano 4
-                      </div>
-                      <div className="text-xs text-slate-500">Lote 12</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-[#DCFCE7] text-[#166534] px-3 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1">
-                        <span className="material-symbols-outlined text-[14px]">
-                          check_circle
-                        </span>
-                        Al día
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-[#00288e]">
-                      Bs. 0.00
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="material-symbols-outlined text-slate-400 hover:text-slate-700 transition-colors">
-                        more_vert
-                      </button>
-                    </td>
-                  </tr>
-                  {/* Row 2 */}
-                  <tr className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#6ffbbe] text-[#002113] font-bold flex items-center justify-center text-xs">
-                          RC
-                        </div>
-                        <div className="font-semibold text-slate-900">
-                          Rosa Cárdenas
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">4201988 CB.</td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-slate-900">
-                        Manzano 2
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        Calle Aroma #45
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-[#FEE2E2] text-[#991B1B] px-3 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1">
-                        <span className="material-symbols-outlined text-[14px]">
-                          error
-                        </span>
-                        Moroso
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-[#ba1a1a]">
-                      Bs. 350.00
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="material-symbols-outlined text-slate-400 hover:text-slate-700 transition-colors">
-                        more_vert
-                      </button>
-                    </td>
-                  </tr>
-                  {/* Row 3 */}
-                  <tr className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#ffdad7] text-[#410004] font-bold flex items-center justify-center text-xs">
-                          JP
-                        </div>
-                        <div className="font-semibold text-slate-900">
-                          Juan Perez Garcia
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">7710322 LP.</td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-slate-900">
-                        Manzano 7
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        Pje. Olivos #3
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-[#FEF3C7] text-[#92400E] px-3 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1">
-                        <span className="material-symbols-outlined text-[14px]">
-                          schedule
-                        </span>
-                        Pendiente
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-slate-900">
-                      Bs. 50.00
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="material-symbols-outlined text-slate-400 hover:text-slate-700 transition-colors">
-                        more_vert
-                      </button>
-                    </td>
-                  </tr>
+                  {vecinos
+                    .filter((v: any) => {
+                      const matchesSearch =
+                        v.nombre
+                          ?.toLowerCase()
+                          .includes(searchTerm.toLowerCase()) ||
+                        v.ci?.toLowerCase().includes(searchTerm.toLowerCase());
+                      const matchesManzano =
+                        selectedManzano === "Todas las Manzanas" ||
+                        v.manzano?.toLowerCase() ===
+                          selectedManzano.toLowerCase();
+                      return matchesSearch && matchesManzano;
+                    })
+                    .map((vecino: any, index: number) => (
+                      <tr
+                        key={vecino.id || index}
+                        className="hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-[#dde1ff] text-[#00288e] font-bold flex items-center justify-center text-xs">
+                              {vecino.iniciales}
+                            </div>
+                            <div className="font-semibold text-slate-900">
+                              {vecino.nombre}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-600">
+                          {vecino.ci}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-slate-900">
+                            Mz. {vecino.manzano}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            Lote {vecino.lote}{" "}
+                            {vecino.direccion ? `- ${vecino.direccion}` : ""}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold flex items-center w-fit gap-1 ${
+                              vecino.tipoEstado === "success"
+                                ? "bg-[#DCFCE7] text-[#166534]"
+                                : "bg-[#FEE2E2] text-[#991B1B]"
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-[14px]">
+                              {vecino.tipoEstado === "success"
+                                ? "check_circle"
+                                : "error"}
+                            </span>
+                            {vecino.estado}
+                          </span>
+                        </td>
+                        <td
+                          className={`px-6 py-4 font-bold ${
+                            vecino.tipoEstado === "success"
+                              ? "text-[#00288e]"
+                              : "text-[#ba1a1a]"
+                          }`}
+                        >
+                          {vecino.saldo}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button className="material-symbols-outlined text-slate-400 hover:text-slate-700 transition-colors">
+                            more_vert
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Pagination */}
             <div className="bg-slate-50 px-6 py-3 flex items-center justify-between border-t border-slate-200">
               <p className="text-xs text-slate-500">
-                Mostrando 4 de 142 vecinos
+                Mostrando {vecinos.length} vecinos registrados
               </p>
-              <div className="flex gap-1">
-                <button
-                  className="p-1 rounded-lg border border-slate-300 hover:bg-slate-100 disabled:opacity-50"
-                  disabled
-                >
-                  <span className="material-symbols-outlined text-sm">
-                    chevron_left
-                  </span>
-                </button>
-                <button className="px-3 py-1 rounded-lg border border-[#00288e] bg-[#00288e] text-white text-xs font-semibold">
-                  1
-                </button>
-                <button className="px-3 py-1 rounded-lg border border-slate-300 hover:bg-slate-100 text-xs font-semibold">
-                  2
-                </button>
-                <button className="px-3 py-1 rounded-lg border border-slate-300 hover:bg-slate-100 text-xs font-semibold">
-                  3
-                </button>
-                <button className="p-1 rounded-lg border border-slate-300 hover:bg-slate-100">
-                  <span className="material-symbols-outlined text-sm">
-                    chevron_right
-                  </span>
-                </button>
-              </div>
             </div>
           </div>
         </div>
       </main>
-
-      {/* BottomNavBar (Mobile) */}
-      <nav className="fixed bottom-0 w-full lg:hidden z-50 bg-white border-t border-slate-200 shadow-lg flex justify-around items-center h-16 px-2">
-        <a
-          href="#"
-          className="flex flex-col items-center justify-center text-slate-500"
-        >
-          <span className="material-symbols-outlined">home</span>
-          <span className="text-[10px]">Inicio</span>
-        </a>
-        <a
-          href="#"
-          className="flex flex-col items-center justify-center bg-[#6cf8bb] text-[#002113] rounded-full px-4 py-1"
-        >
-          <span
-            className="material-symbols-outlined"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            person
-          </span>
-          <span className="text-[10px] font-bold">Vecinos</span>
-        </a>
-        <a
-          href="#"
-          className="flex flex-col items-center justify-center text-slate-500"
-        >
-          <span className="material-symbols-outlined">receipt_long</span>
-          <span className="text-[10px]">Pagos</span>
-        </a>
-        <a
-          href="#"
-          className="flex flex-col items-center justify-center text-slate-500"
-        >
-          <span className="material-symbols-outlined">settings</span>
-          <span className="text-[10px]">Ajustes</span>
-        </a>
-      </nav>
 
       {/* Registration Modal */}
       {isModalOpen && (
@@ -464,22 +484,14 @@ export default function DashboardVecinosPage() {
             </span>
             <div className="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-slate-200 relative z-10">
               <div className="px-8 py-8">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#1e40af] flex items-center justify-center text-white">
-                      <span className="material-symbols-outlined">
-                        person_add
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-900">
-                        Registrar Nuevo Vecino
-                      </h3>
-                      <p className="text-sm text-slate-500">
-                        Complete los datos para añadir un nuevo residente al
-                        sistema.
-                      </p>
-                    </div>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">
+                      Registrar Nuevo Vecino
+                    </h3>
+                    <p className="text-sm text-slate-500">
+                      Complete todos los datos requeridos por la base de datos.
+                    </p>
                   </div>
                   <button
                     onClick={toggleModal}
@@ -489,101 +501,90 @@ export default function DashboardVecinosPage() {
                   </button>
                 </div>
 
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    toggleModal();
-                  }}
-                  className="space-y-6"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Personal Info */}
-                    <div className="space-y-4">
-                      <h4 className="text-xs font-bold text-[#00288e] uppercase tracking-wider border-b border-slate-200 pb-1">
-                        Datos Personales
-                      </h4>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Nombre Completo
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Ej. Juan Pérez"
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#00288e] focus:ring-1 focus:ring-[#00288e] outline-none"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Cédula de Identidad (CI)
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Ej. 7894561 LP."
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#00288e] focus:ring-1 focus:ring-[#00288e] outline-none"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Teléfono / Celular
-                        </label>
-                        <input
-                          type="tel"
-                          placeholder="Ej. 70123456"
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#00288e] focus:ring-1 focus:ring-[#00288e] outline-none"
-                        />
-                      </div>
+                <form onSubmit={handleSubmitVecino} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Nombre Completo
+                      </label>
+                      <input
+                        type="text"
+                        name="nombre"
+                        value={formData.nombre}
+                        onChange={handleInputChange}
+                        placeholder="Ej. Juan Pérez"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#00288e] outline-none"
+                        required
+                      />
                     </div>
-
-                    {/* Property Info */}
-                    <div className="space-y-4">
-                      <h4 className="text-xs font-bold text-[#00288e] uppercase tracking-wider border-b border-slate-200 pb-1">
-                        Ubicación de Vivienda
-                      </h4>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Manzano
-                        </label>
-                        <select className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#00288e] outline-none bg-white">
-                          <option>Seleccione un manzano</option>
-                          <option>Manzano 1</option>
-                          <option>Manzano 2</option>
-                          <option>Manzano 3</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          N° de Lote / Puerta
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Ej. Lote 14"
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#00288e] focus:ring-1 focus:ring-[#00288e] outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Dirección Específica
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Ej. Av. Panamericana esq. Calle A"
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#00288e] focus:ring-1 focus:ring-[#00288e] outline-none"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Cédula de Identidad (CI)
+                      </label>
+                      <input
+                        type="text"
+                        name="ci"
+                        value={formData.ci}
+                        onChange={handleInputChange}
+                        placeholder="Ej. 13378711"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#00288e] outline-none"
+                        required
+                      />
                     </div>
-                  </div>
-
-                  <div className="bg-slate-50 p-4 rounded-xl flex items-start gap-3">
-                    <span className="material-symbols-outlined text-[#00288e] text-lg">
-                      info
-                    </span>
-                    <p className="text-xs text-slate-600">
-                      El vecino será registrado inicialmente con saldo cero.
-                      Podrá configurar deudas anteriores desde el panel de
-                      edición individual.
-                    </p>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Teléfono
+                      </label>
+                      <input
+                        type="text"
+                        name="telefono"
+                        value={formData.telefono}
+                        onChange={handleInputChange}
+                        placeholder="Ej. 70712345"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#00288e] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Manzano
+                      </label>
+                      <input
+                        type="text"
+                        name="manzano"
+                        value={formData.manzano}
+                        onChange={handleInputChange}
+                        placeholder="Ej. d-3"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#00288e] outline-none"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Lote
+                      </label>
+                      <input
+                        type="text"
+                        name="lote"
+                        value={formData.lote}
+                        onChange={handleInputChange}
+                        placeholder="Ej. 25"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#00288e] outline-none"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Dirección / Referencia
+                      </label>
+                      <input
+                        type="text"
+                        name="direccion"
+                        value={formData.direccion}
+                        onChange={handleInputChange}
+                        placeholder="Ej. Villa Calama"
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#00288e] outline-none"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
@@ -596,7 +597,7 @@ export default function DashboardVecinosPage() {
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-[#00288e] shadow-md hover:brightness-110 active:scale-95 transition-all"
+                      className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-[#00288e] shadow-md hover:brightness-110 transition-all"
                     >
                       Guardar Vecino
                     </button>

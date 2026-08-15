@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/db');
 const authRoutes = require('./auth.routes');
+const vecinoRoutes = require('./vecino.routes'); // <-- 1. Importar las rutas de vecinos
 
 // Endpoint principal
 router.get('/', (req, res) => {
@@ -10,7 +11,8 @@ router.get('/', (req, res) => {
     endpoints: {
       health: '/api/health',
       testDb: '/api/test-db',
-      login: 'POST /api/auth/login'
+      login: 'POST /api/auth/login',
+      vecinos: '/api/vecinos' // <-- Opcional: guía en la API principal
     }
   });
 });
@@ -34,7 +36,8 @@ router.get('/test-db', async (req, res) => {
   }
 });
 
-// Registrar módulo de Autenticación
+// Registrar módulos de rutas
 router.use('/auth', authRoutes);
+router.use('/vecinos', vecinoRoutes); // <-- 2. Registrar el middleware de vecinos
 
 module.exports = router;
