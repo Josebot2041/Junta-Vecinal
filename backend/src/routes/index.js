@@ -2,7 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/db');
 const authRoutes = require('./auth.routes');
-const vecinoRoutes = require('./vecino.routes'); // <-- 1. Importar las rutas de vecinos
+const vecinoRoutes = require('./vecino.routes');
+const pagoRoutes = require('./pago.routes');
+const asambleaRoutes = require('./asamblea.routes');
+const asistenciaRoutes = require('./asistencia.routes'); // <-- 1. Importar las rutas de vecinos
 
 // Endpoint principal
 router.get('/', (req, res) => {
@@ -38,6 +41,9 @@ router.get('/test-db', async (req, res) => {
 
 // Registrar módulos de rutas
 router.use('/auth', authRoutes);
-router.use('/vecinos', vecinoRoutes); // <-- 2. Registrar el middleware de vecinos
+router.use('/vecinos', vecinoRoutes);
+router.use('/pagos', pagoRoutes);
+router.use('/asambleas', asambleaRoutes);
+router.use('/asistencias', asistenciaRoutes); // <-- 2. Registrar el middleware de vecinos
 
 module.exports = router;
