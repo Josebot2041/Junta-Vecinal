@@ -17,7 +17,6 @@ interface EventItem {
 }
 
 export default function AttendancePage() {
-  // Estados para manejar la lógica de la UI
   const [selectedEvent, setSelectedEvent] = useState<string>("");
   const [events, setEvents] = useState<EventItem[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -41,7 +40,6 @@ export default function AttendancePage() {
         }
         const data = await response.json();
 
-        // Mapea la estructura de la base de datos (id, nombre, fecha)
         const mappedEvents: EventItem[] = data.map((item: any) => ({
           id: String(item.id),
           title: item.nombre || `${item.tipo} - ${item.fecha}`,
@@ -49,7 +47,6 @@ export default function AttendancePage() {
 
         setEvents(mappedEvents);
 
-        // Selecciona automáticamente la primera asamblea si existe
         if (mappedEvents.length > 0) {
           setSelectedEvent(mappedEvents[0].id);
         }
@@ -75,7 +72,6 @@ export default function AttendancePage() {
         }
         const data = await response.json();
 
-        // Mapea los datos del backend
         const mappedList: NeighborAttendance[] = data.map((item: any) => ({
           id: String(item.id),
           name: item.nombre,
@@ -109,8 +105,6 @@ export default function AttendancePage() {
     totalRegistered > 0
       ? Math.round((presentCount / totalRegistered) * 100)
       : 0;
-
-  // --- ACCIONES ---
 
   const handleStatusChange = async (
     id: string,
@@ -174,114 +168,7 @@ export default function AttendancePage() {
   );
 
   return (
-    <div className="bg-[#f7f9fb] text-[#191c1e] font-sans min-h-screen pb-20 lg:pb-0 lg:pl-64">
-      <link
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&display=swap"
-        rel="stylesheet"
-      />
-
-      {/* SideNavBar (Desktop) */}
-      <aside className="h-screen w-64 fixed left-0 top-0 hidden lg:flex flex-col bg-white border-r border-[#c4c5d5] p-4 space-y-2 z-40">
-        <div className="flex items-center gap-3 px-2 py-4">
-          <div className="w-10 h-10 rounded-lg bg-[#1e40af] flex items-center justify-center text-[#a8b8ff]">
-            <span
-              className="material-symbols-outlined"
-              style={{ fontVariationSettings: '"FILL" 1' }}
-            >
-              account_balance
-            </span>
-          </div>
-          <div>
-            <h2 className="font-semibold text-lg text-[#00288e]">
-              Gestión OTB
-            </h2>
-            <p className="text-[10px] text-[#444653] uppercase tracking-widest">
-              Cochabamba, Bolivia
-            </p>
-          </div>
-        </div>
-        <nav className="flex-1 mt-4 space-y-1">
-          <a
-            href="#"
-            className="flex items-center gap-4 p-3 text-[#444653] hover:bg-[#e6e8ea] rounded-lg transition-all"
-          >
-            <span className="material-symbols-outlined">dashboard</span>
-            <span className="font-semibold text-sm">Inicio</span>
-          </a>
-          <a
-            href="#"
-            className="flex items-center gap-4 p-3 text-[#444653] hover:bg-[#e6e8ea] rounded-lg transition-all"
-          >
-            <span className="material-symbols-outlined">group</span>
-            <span className="font-semibold text-sm">Vecinos</span>
-          </a>
-          <a
-            href="#"
-            className="flex items-center gap-4 p-3 text-[#444653] hover:bg-[#e6e8ea] rounded-lg transition-all"
-          >
-            <span className="material-symbols-outlined">payments</span>
-            <span className="font-semibold text-sm">Pagos</span>
-          </a>
-          <a
-            href="#"
-            className="flex items-center gap-4 p-3 bg-[#1e40af] text-[#a8b8ff] font-bold rounded-lg transition-all"
-          >
-            <span className="material-symbols-outlined">construction</span>
-            <span className="font-semibold text-sm">Proyectos</span>
-          </a>
-          <a
-            href="#"
-            className="flex items-center gap-4 p-3 text-[#444653] hover:bg-[#e6e8ea] rounded-lg transition-all"
-          >
-            <span className="material-symbols-outlined">assessment</span>
-            <span className="font-semibold text-sm">Reportes</span>
-          </a>
-        </nav>
-        <div className="pt-4 border-t border-[#c4c5d5]">
-          <button className="w-full bg-[#00288e] text-white font-semibold text-sm py-3 px-4 rounded-lg shadow-sm hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2">
-            <span className="material-symbols-outlined">add</span>
-            Registrar Pago
-          </button>
-        </div>
-      </aside>
-
-      {/* TopNavBar */}
-      <header className="w-full sticky top-0 z-30 bg-[#f7f9fb] border-b border-[#c4c5d5] shadow-sm flex justify-between items-center px-6 py-3 max-w-[1280px] mx-auto">
-        <div className="flex items-center gap-2">
-          <span className="lg:hidden material-symbols-outlined text-[#00288e] cursor-pointer">
-            menu
-          </span>
-          <h1 className="text-xl font-semibold text-[#00288e]">
-            Comunidad Gestión
-          </h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center bg-[#f2f4f6] rounded-full px-4 py-1 border border-[#c4c5d5]">
-            <span className="material-symbols-outlined text-[#444653] text-sm mr-2">
-              search
-            </span>
-            <input
-              className="bg-transparent border-none focus:ring-0 text-sm w-48 outline-none"
-              placeholder="Buscar..."
-              type="text"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="p-1 rounded-full hover:bg-[#f2f4f6] transition-colors">
-              <span className="material-symbols-outlined text-[#444653]">
-                notifications
-              </span>
-            </button>
-            <div className="w-8 h-8 rounded-full bg-[#dde1ff] flex items-center justify-center">
-              <span className="material-symbols-outlined text-[#00288e] text-lg">
-                account_circle
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
+    <>
       <main className="max-w-[1280px] mx-auto p-4 lg:p-8 space-y-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -511,6 +398,6 @@ export default function AttendancePage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
