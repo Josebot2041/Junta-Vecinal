@@ -4,5 +4,7 @@ const pagoController = require('../controllers/pago.controller');
 
 router.post('/', pagoController.registrarPago);
 router.get('/', pagoController.listarPagos);
+router.patch('/:id/cobrar', pagoController.cobrarPago);
+router.delete('/:id', pagoController.eliminarPago);
 
 module.exports = router;

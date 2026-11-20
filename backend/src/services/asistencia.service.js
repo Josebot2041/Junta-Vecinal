@@ -44,7 +44,7 @@ class AsistenciaService {
         v.id,
         CONCAT('Multa por Inasistencia: ', $2::text),
         $3::numeric,
-        'pendiente'
+        'Pendiente'
       FROM vecinos v
       LEFT JOIN asistencias a ON v.id = a.vecino_id AND a.asamblea_id = $1
       WHERE COALESCE(a.estado, 'absent') = 'absent'

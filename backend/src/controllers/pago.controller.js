@@ -1,5 +1,6 @@
 const pagoService = require('../services/pago.service');
 
+// POST /api/pagos
 const registrarPago = async (req, res, next) => {
   try {
     const pagoData = req.body;
@@ -13,6 +14,7 @@ const registrarPago = async (req, res, next) => {
   }
 };
 
+// GET /api/pagos
 const listarPagos = async (req, res, next) => {
   try {
     const pagos = await pagoService.obtenerTodos();
@@ -22,7 +24,31 @@ const listarPagos = async (req, res, next) => {
   }
 };
 
+// PATCH /api/pagos/:id/cobrar
+const cobrarPago = async (req, res, next) => {
+  try {
+    const pago = await pagoService.cobrarPago(req.params.id);
+    if (!pago) return res.status(404).json({ error: 'Pago no encontrado' });
+    res.status(200).json({ message: 'Pago marcado como cobrado', data: pago });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE /api/pagos/:id
+const eliminarPago = async (req, res, next) => {
+  try {
+    const pago = await pagoService.eliminarPago(req.params.id);
+    if (!pago) return res.status(404).json({ error: 'Pago no encontrado' });
+    res.status(200).json({ message: 'Pago eliminado exitosamente', data: pago });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   registrarPago,
-  listarPagos
+  listarPagos,
+  cobrarPago,
+  eliminarPago,
 };
