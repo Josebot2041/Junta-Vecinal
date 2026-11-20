@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 const navItems = [
-  { href: "/dashboard",   label: "Inicio",      icon: "dashboard" },
-  { href: "/vecinos",     label: "Vecinos",     icon: "group" },
-  { href: "/pagos",       label: "Pagos",       icon: "payments" },
-  { href: "/asambleas",   label: "Asambleas",   icon: "event" },
-  { href: "/asistencias", label: "Asistencias", icon: "how_to_reg" },
-  { href: "/reportes",    label: "Reportes",    icon: "assessment" },
+  { href: "/dashboard",   label: "Inicio",       icon: "dashboard" },
+  { href: "/vecinos",     label: "Vecinos",      icon: "group" },
+  { href: "/pagos",       label: "Pagos",        icon: "payments" },
+  { href: "/comunicados", label: "Comunicados",  icon: "campaign" },
+  { href: "/asambleas",   label: "Asambleas",    icon: "event" },
+  { href: "/asistencias", label: "Asistencias",  icon: "how_to_reg" },
+  { href: "/reportes",    label: "Reportes",     icon: "assessment" },
 ];
 
 export default function Sidebar() {

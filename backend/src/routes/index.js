@@ -5,7 +5,8 @@ const authRoutes = require('./auth.routes');
 const vecinoRoutes = require('./vecino.routes');
 const pagoRoutes = require('./pago.routes');
 const asambleaRoutes = require('./asamblea.routes');
-const asistenciaRoutes = require('./asistencia.routes'); // <-- 1. Importar las rutas de vecinos
+const asistenciaRoutes = require('./asistencia.routes');
+const comunicadoRoutes = require('./comunicado.routes');
 
 // Endpoint principal
 router.get('/', (req, res) => {
@@ -44,6 +45,7 @@ router.use('/auth', authRoutes);
 router.use('/vecinos', vecinoRoutes);
 router.use('/pagos', pagoRoutes);
 router.use('/asambleas', asambleaRoutes);
-router.use('/asistencias', asistenciaRoutes); // <-- 2. Registrar el middleware de vecinos
+router.use('/asistencias', asistenciaRoutes);
+router.use('/comunicados', comunicadoRoutes);
 
 module.exports = router;

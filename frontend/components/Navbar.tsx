@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 const mobileNavItems = [
-  { href: "/dashboard",   label: "Inicio",      icon: "home" },
-  { href: "/vecinos",     label: "Vecinos",     icon: "person" },
-  { href: "/pagos",       label: "Pagos",       icon: "receipt_long" },
-  { href: "/asambleas",   label: "Asambleas",   icon: "event" },
-  { href: "/asistencias", label: "Asistencias", icon: "how_to_reg" },
-  { href: "/reportes",    label: "Reportes",    icon: "assessment" },
+  { href: "/dashboard",   label: "Inicio",       icon: "home" },
+  { href: "/vecinos",     label: "Vecinos",      icon: "person" },
+  { href: "/pagos",       label: "Pagos",        icon: "receipt_long" },
+  { href: "/comunicados", label: "Avisos",       icon: "campaign" },
+  { href: "/asambleas",   label: "Asambleas",    icon: "event" },
+  { href: "/asistencias", label: "Asistencias",  icon: "how_to_reg" },
+  { href: "/reportes",    label: "Reportes",     icon: "assessment" },
 ];
 
 export default function Navbar() {

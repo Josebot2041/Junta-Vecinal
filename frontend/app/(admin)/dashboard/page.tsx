@@ -485,6 +485,24 @@ export default function DashboardPage() {
                 arrow_forward
               </span>
             </Link>
+
+            <Link
+              href="/comunicados"
+              className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-blue-800 p-2 bg-blue-50 rounded-lg group-hover:bg-blue-800 group-hover:text-white transition-colors">
+                  campaign
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-slate-800">Comunicados y Carteles</p>
+                  <p className="text-xs text-slate-500">Publicar citaciones y avisos OTB</p>
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-slate-400 group-hover:text-blue-800 group-hover:translate-x-0.5 transition-all">
+                arrow_forward
+              </span>
+            </Link>
           </div>
         </div>
       </div>
