@@ -70,9 +70,42 @@ const deleteAsamblea = async (req, res) => {
   }
 };
 
+const confirmarAsistencia = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { vecino_id } = req.body;
+    if (!id || !vecino_id) {
+      return res.status(400).json({ error: 'asamblea_id y vecino_id son requeridos' });
+    }
+    const confirmacion = await asambleaService.confirmarAsistencia(id, vecino_id);
+    const preQuorum = await asambleaService.obtenerPreQuorum(id, vecino_id);
+    res.json({ message: 'Asistencia confirmada exitosamente', confirmacion, preQuorum });
+  } catch (error) {
+    console.error('Error al confirmar asistencia:', error);
+    res.status(500).json({ error: 'Error al confirmar asistencia a la asamblea' });
+  }
+};
+
+const getPreQuorum = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { vecino_id } = req.query;
+    if (!id) {
+      return res.status(400).json({ error: 'El ID de la asamblea es requerido' });
+    }
+    const preQuorum = await asambleaService.obtenerPreQuorum(id, vecino_id);
+    res.json(preQuorum);
+  } catch (error) {
+    console.error('Error al obtener pre-quórum:', error);
+    res.status(500).json({ error: 'Error al calcular pre-quórum' });
+  }
+};
+
 module.exports = {
   getAsambleas,
   createAsamblea,
   updateAsamblea,
   deleteAsamblea,
+  confirmarAsistencia,
+  getPreQuorum,
 };

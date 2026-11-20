@@ -47,6 +47,47 @@ class AsambleaService {
     );
     return result.rows[0];
   }
+
+  // Pre-Quórum y Confirmación de Asistencia
+  async confirmarAsistencia(asambleaId, vecinoId) {
+    const query = `
+      INSERT INTO confirmaciones_asamblea (asamblea_id, vecino_id)
+      VALUES ($1, $2)
+      ON CONFLICT (asamblea_id, vecino_id) DO UPDATE SET confirmado_en = CURRENT_TIMESTAMP
+      RETURNING *;
+    `;
+    const result = await db.query(query, [asambleaId, vecinoId]);
+    return result.rows[0];
+  }
+
+  async obtenerPreQuorum(asambleaId, vecinoId = null) {
+    const countRes = await db.query(
+      `SELECT COUNT(*)::int AS confirmados FROM confirmaciones_asamblea WHERE asamblea_id = $1`,
+      [asambleaId]
+    );
+    const totalRes = await db.query(`SELECT COUNT(*)::int AS total FROM vecinos`);
+    
+    let yaConfirmado = false;
+    if (vecinoId) {
+      const checkRes = await db.query(
+        `SELECT 1 FROM confirmaciones_asamblea WHERE asamblea_id = $1 AND vecino_id = $2`,
+        [asambleaId, vecinoId]
+      );
+      yaConfirmado = checkRes.rows.length > 0;
+    }
+
+    const confirmados = countRes.rows[0]?.confirmados || 0;
+    const total = totalRes.rows[0]?.total || 1;
+    const porcentaje = Math.round((confirmados / total) * 100);
+
+    return {
+      asambleaId: Number(asambleaId),
+      confirmados,
+      totalVecinos: total,
+      porcentaje,
+      yaConfirmado,
+    };
+  }
 }
 
 module.exports = new AsambleaService();

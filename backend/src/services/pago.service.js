@@ -3,13 +3,13 @@ const { syncSaldoEstado } = require('./vecino.service');
 
 // ── Registrar nuevo pago ──────────────────────────────────────────────────────
 const crear = async (data) => {
-  const { vecino_id, concepto, monto, estado, fecha } = data;
+  const { vecino_id, concepto, monto, estado, fecha, comprobante_url } = data;
   const query = `
-    INSERT INTO pagos (vecino_id, concepto, monto, estado, fecha) 
-    VALUES ($1, $2, $3, $4, COALESCE($5, CURRENT_TIMESTAMP)) 
+    INSERT INTO pagos (vecino_id, concepto, monto, estado, fecha, comprobante_url) 
+    VALUES ($1, $2, $3, $4, COALESCE($5, CURRENT_TIMESTAMP), $6) 
     RETURNING *;
   `;
-  const values = [vecino_id, concepto, monto, estado, fecha];
+  const values = [vecino_id, concepto, monto, estado || 'Pendiente', fecha, comprobante_url || null];
   const result = await pool.query(query, values);
   // Sincronizar saldo/estado_cuenta del vecino
   await syncSaldoEstado(vecino_id);

@@ -53,6 +53,68 @@ class AsistenciaService {
     const result = await db.query(query, [asambleaId, asambleaNombre, monto]);
     return result.rows;
   }
+
+  // ── Justificaciones / Licencias ───────────────────────────────────────────
+  async crearJustificacion({ asamblea_id, vecino_id, motivo, descripcion, documento_url }) {
+    const query = `
+      INSERT INTO justificaciones (asamblea_id, vecino_id, motivo, descripcion, documento_url, estado)
+      VALUES ($1, $2, $3, $4, $5, 'Pendiente')
+      RETURNING *;
+    `;
+    const result = await db.query(query, [asamblea_id, vecino_id, motivo, descripcion, documento_url || null]);
+    return result.rows[0];
+  }
+
+  async listarJustificaciones(asamblea_id = null) {
+    let query = `
+      SELECT j.*, v.nombre AS vecino_nombre, v.manzano, v.lote,
+             a.nombre AS asamblea_nombre, TO_CHAR(a.fecha, 'YYYY-MM-DD') AS asamblea_fecha
+      FROM justificaciones j
+      JOIN vecinos v ON j.vecino_id = v.id
+      JOIN asambleas a ON j.asamblea_id = a.id
+    `;
+    const params = [];
+    if (asamblea_id) {
+      query += ` WHERE j.asamblea_id = $1`;
+      params.push(asamblea_id);
+    }
+    query += ` ORDER BY j.creado_en DESC;`;
+    const result = await db.query(query, params);
+    return result.rows;
+  }
+
+  async resolverJustificacion(id, nuevoEstado) {
+    const query = `
+      UPDATE justificaciones
+      SET estado = $1
+      WHERE id = $2
+      RETURNING *;
+    `;
+    const result = await db.query(query, [nuevoEstado, id]);
+    const justificacion = result.rows[0];
+
+    if (justificacion) {
+      if (nuevoEstado === 'Aprobada') {
+        // Marcar en asistencias como 'justified'
+        await db.query(`
+          INSERT INTO asistencias (asamblea_id, vecino_id, estado)
+          VALUES ($1, $2, 'justified')
+          ON CONFLICT (asamblea_id, vecino_id)
+          DO UPDATE SET estado = 'justified', registrado_en = CURRENT_TIMESTAMP;
+        `, [justificacion.asamblea_id, justificacion.vecino_id]);
+      } else if (nuevoEstado === 'Rechazada') {
+        // Si estaba 'justified', revertir a 'absent'
+        await db.query(`
+          INSERT INTO asistencias (asamblea_id, vecino_id, estado)
+          VALUES ($1, $2, 'absent')
+          ON CONFLICT (asamblea_id, vecino_id)
+          DO UPDATE SET estado = 'absent', registrado_en = CURRENT_TIMESTAMP;
+        `, [justificacion.asamblea_id, justificacion.vecino_id]);
+      }
+    }
+
+    return justificacion;
+  }
 }
 
 module.exports = new AsistenciaService();

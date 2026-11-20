@@ -50,8 +50,60 @@ const generateFines = async (req, res) => {
   }
 };
 
+const solicitarJustificacion = async (req, res) => {
+  try {
+    const { asamblea_id, vecino_id, motivo, descripcion, documento_url } = req.body;
+    if (!asamblea_id || !vecino_id || !motivo) {
+      return res.status(400).json({ error: 'asamblea_id, vecino_id y motivo son requeridos' });
+    }
+    const nueva = await asistenciaService.crearJustificacion({
+      asamblea_id,
+      vecino_id,
+      motivo,
+      descripcion,
+      documento_url
+    });
+    res.status(201).json({ message: 'Justificación enviada correctamente', data: nueva });
+  } catch (error) {
+    console.error('Error al solicitar justificación:', error);
+    res.status(500).json({ error: 'Error al registrar la solicitud de justificación' });
+  }
+};
+
+const listarJustificaciones = async (req, res) => {
+  try {
+    const { asamblea_id } = req.query;
+    const lista = await asistenciaService.listarJustificaciones(asamblea_id || null);
+    res.json(lista);
+  } catch (error) {
+    console.error('Error al listar justificaciones:', error);
+    res.status(500).json({ error: 'Error al listar las justificaciones' });
+  }
+};
+
+const resolverJustificacion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado } = req.body; // 'Aprobada' | 'Rechazada'
+    if (!['Aprobada', 'Rechazada'].includes(estado)) {
+      return res.status(400).json({ error: 'Estado inválido. Debe ser Aprobada o Rechazada' });
+    }
+    const resultado = await asistenciaService.resolverJustificacion(id, estado);
+    if (!resultado) {
+      return res.status(404).json({ error: 'Justificación no encontrada' });
+    }
+    res.json({ message: `Justificación ${estado.toLowerCase()} con éxito`, data: resultado });
+  } catch (error) {
+    console.error('Error al resolver justificación:', error);
+    res.status(500).json({ error: 'Error al actualizar el estado de la justificación' });
+  }
+};
+
 module.exports = {
   getAsistenciasByAsamblea,
   registerAsistencia,
   generateFines,
+  solicitarJustificacion,
+  listarJustificaciones,
+  resolverJustificacion,
 };

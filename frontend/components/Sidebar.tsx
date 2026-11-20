@@ -72,10 +72,10 @@ export default function Sidebar() {
       </nav>
 
       {/* Logout */}
-      <div className="pt-4 border-t border-[#c4c5d5] mt-4">
+      <div className="pt-4 border-t border-[#c4c5d5] mt-auto">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 p-3 text-[#ba1a1a] hover:bg-red-50 rounded-lg transition-all font-semibold text-sm"
+          className="w-full flex items-center gap-3 p-3 text-[#ba1a1a] hover:bg-red-50 rounded-lg transition-all font-semibold text-sm cursor-pointer"
         >
           <span className="material-symbols-outlined">logout</span>
           <span>Cerrar Sesión</span>

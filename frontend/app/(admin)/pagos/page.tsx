@@ -19,6 +19,7 @@ interface Pago {
   monto: number;
   estado: string;
   fecha: string;
+  comprobante_url?: string;
 }
 
 const API = "http://localhost:5000/api";
@@ -35,6 +36,7 @@ export default function PagosPage() {
 
   // Modal recibo
   const [reciboModal, setReciboModal] = useState<{ open: boolean; pago: Pago | null }>({ open: false, pago: null });
+  const [voucherModal, setVoucherModal] = useState<{ open: boolean; pago: Pago | null }>({ open: false, pago: null });
   const reciboRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -324,6 +326,17 @@ export default function PagosPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1">
+                          {/* Ver comprobante si existe */}
+                          {p.comprobante_url && (
+                            <button
+                              onClick={() => setVoucherModal({ open: true, pago: p })}
+                              title="Ver voucher / comprobante de pago subido"
+                              className="p-1.5 rounded-lg text-[#00288e] bg-[#dde1ff]/60 hover:bg-[#00288e] hover:text-white transition-all relative"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">image</span>
+                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
+                            </button>
+                          )}
                           {/* Marcar como cobrado (solo si Pendiente) */}
                           {p.estado !== "Pagado" && (
                             <button
@@ -431,6 +444,109 @@ export default function PagosPage() {
                   <span className="material-symbols-outlined text-[18px]">print</span>
                   Imprimir Recibo
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Modal Comprobante / Voucher de Pago ── */}
+      {voucherModal.open && voucherModal.pago && (
+        <div className="fixed inset-0 z-[110] overflow-y-auto" role="dialog">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 sm:block sm:p-0">
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+              onClick={() => setVoucherModal({ open: false, pago: null })}
+            ></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div className="inline-block align-bottom bg-white rounded-2xl shadow-2xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-slate-200 relative z-10 overflow-hidden">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#dde1ff] text-[#00288e] flex items-center justify-center font-bold">
+                    <span className="material-symbols-outlined">receipt</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-slate-900">Voucher de Pago</h3>
+                    <p className="text-xs text-slate-500">Comprobante enviado por el vecino</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setVoucherModal({ open: false, pago: null })}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="bg-[#f2f4f6] p-4 rounded-xl space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Vecino:</span>
+                    <span className="font-bold text-slate-800">{voucherModal.pago.vecino_nombre}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Inmueble:</span>
+                    <span className="font-medium text-slate-700">Mz. {voucherModal.pago.manzano || "-"} - Lote {voucherModal.pago.lote || "-"}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Concepto:</span>
+                    <span className="font-medium text-slate-700">{voucherModal.pago.concepto}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Monto Reportado:</span>
+                    <span className="font-extrabold text-[#00288e]">{Number(voucherModal.pago.monto).toFixed(2)} BOB</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Estado actual:</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${voucherModal.pago.estado === "Pagado" ? "bg-[#DCFCE7] text-[#166534]" : "bg-amber-100 text-amber-900"}`}>
+                      {voucherModal.pago.estado}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">
+                    Foto o Captura de Transferencia / QR
+                  </label>
+                  <div className="border-2 border-dashed border-slate-200 rounded-xl p-2 bg-slate-50 flex items-center justify-center max-h-80 overflow-auto">
+                    {voucherModal.pago.comprobante_url ? (
+                      <img
+                        src={voucherModal.pago.comprobante_url}
+                        alt="Comprobante de pago"
+                        className="max-h-72 w-auto object-contain rounded-lg shadow-sm"
+                      />
+                    ) : (
+                      <div className="py-8 text-center text-slate-400">
+                        <span className="material-symbols-outlined text-4xl mb-1">image_not_supported</span>
+                        <p className="text-xs">No se adjuntó archivo de comprobante.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setVoucherModal({ open: false, pago: null })}
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Cerrar
+                </button>
+                {voucherModal.pago.estado !== "Pagado" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (voucherModal.pago) {
+                        handleCobrarPago(voucherModal.pago.id);
+                        setVoucherModal({ open: false, pago: null });
+                      }
+                    }}
+                    className="px-5 py-2 bg-[#00288e] hover:bg-[#1e40af] text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-sm">verified</span>
+                    Aprobar y Marcar como Cobrado
+                  </button>
+                )}
               </div>
             </div>
           </div>

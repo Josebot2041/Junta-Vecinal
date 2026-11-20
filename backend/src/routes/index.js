@@ -7,6 +7,7 @@ const pagoRoutes = require('./pago.routes');
 const asambleaRoutes = require('./asamblea.routes');
 const asistenciaRoutes = require('./asistencia.routes');
 const comunicadoRoutes = require('./comunicado.routes');
+const puntoRoutes = require('./punto.routes');
 
 // Endpoint principal
 router.get('/', (req, res) => {
@@ -16,7 +17,8 @@ router.get('/', (req, res) => {
       health: '/api/health',
       testDb: '/api/test-db',
       login: 'POST /api/auth/login',
-      vecinos: '/api/vecinos' // <-- Opcional: guía en la API principal
+      vecinos: '/api/vecinos',
+      puntosComunitarios: '/api/puntos-comunitarios'
     }
   });
 });
@@ -47,5 +49,6 @@ router.use('/pagos', pagoRoutes);
 router.use('/asambleas', asambleaRoutes);
 router.use('/asistencias', asistenciaRoutes);
 router.use('/comunicados', comunicadoRoutes);
+router.use('/puntos-comunitarios', puntoRoutes);
 
 module.exports = router;

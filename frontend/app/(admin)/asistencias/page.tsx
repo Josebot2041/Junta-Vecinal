@@ -16,18 +16,67 @@ interface EventItem {
   title: string;
 }
 
+interface Justificacion {
+  id: number;
+  asamblea_id: number;
+  vecino_id: number;
+  vecino_nombre?: string;
+  manzano?: string;
+  lote?: string;
+  asamblea_nombre?: string;
+  asamblea_fecha?: string;
+  motivo: string;
+  descripcion: string;
+  documento_url?: string;
+  estado: string; // 'Pendiente' | 'Aprobada' | 'Rechazada'
+  creado_en: string;
+}
+
 export default function AttendancePage() {
   const [selectedEvent, setSelectedEvent] = useState<string>("");
   const [events, setEvents] = useState<EventItem[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isFinesModalOpen, setIsFinesModalOpen] = useState<boolean>(false);
-  const [attendanceList, setAttendanceList] = useState<NeighborAttendance[]>(
-    [],
-  );
+  const [isJustificacionesModalOpen, setIsJustificacionesModalOpen] = useState<boolean>(false);
+  const [previewDocModal, setPreviewDocModal] = useState<string | null>(null);
+  const [attendanceList, setAttendanceList] = useState<NeighborAttendance[]>([]);
+  const [justificaciones, setJustificaciones] = useState<Justificacion[]>([]);
+  const [preQuorum, setPreQuorum] = useState<{
+    confirmados: number;
+    totalVecinos: number;
+    porcentaje: number;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isLoadingEvents, setIsLoadingEvents] = useState<boolean>(true);
 
   const API_URL = "http://localhost:5000/api";
+
+  // Cargar justificaciones
+  const fetchJustificaciones = async () => {
+    try {
+      const res = await fetch(`${API_URL}/asistencias/justificaciones`);
+      if (res.ok) {
+        const data = await res.json();
+        setJustificaciones(data);
+      }
+    } catch (error) {
+      console.error("Error al cargar justificaciones:", error);
+    }
+  };
+
+  // Cargar pre-quórum
+  const fetchPreQuorum = async (asambleaId: string) => {
+    if (!asambleaId) return;
+    try {
+      const res = await fetch(`${API_URL}/asambleas/${asambleaId}/pre-quorum`);
+      if (res.ok) {
+        const data = await res.json();
+        setPreQuorum(data);
+      }
+    } catch (error) {
+      console.error("Error al cargar pre-quórum:", error);
+    }
+  };
 
   // 1. Cargar las asambleas creadas desde el Backend
   useEffect(() => {
@@ -58,6 +107,7 @@ export default function AttendancePage() {
     };
 
     fetchAsambleas();
+    fetchJustificaciones();
   }, []);
 
   // 2. Cargar los vecinos y asistencias según la asamblea seleccionada
@@ -94,7 +144,45 @@ export default function AttendancePage() {
     };
 
     fetchAttendance();
+    fetchPreQuorum(selectedEvent);
   }, [selectedEvent]);
+
+  const handleResolverJustificacion = async (id: number, nuevoEstado: "Aprobada" | "Rechazada") => {
+    try {
+      const res = await fetch(`${API_URL}/asistencias/justificaciones/${id}/resolver`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+      if (res.ok) {
+        await fetchJustificaciones();
+        // Recargar asistencia para reflejar estado 'justified' / 'absent'
+        if (selectedEvent) {
+          const response = await fetch(`${API_URL}/asistencias/${selectedEvent}`);
+          if (response.ok) {
+            const data = await response.json();
+            const mappedList: NeighborAttendance[] = data.map((item: any) => ({
+              id: String(item.id),
+              name: item.nombre,
+              property: item.property,
+              initials: item.nombre
+                .split(" ")
+                .map((n: string) => n[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase(),
+              status: item.status,
+            }));
+            setAttendanceList(mappedList);
+          }
+        }
+      } else {
+        alert("Error al resolver la solicitud de licencia.");
+      }
+    } catch (err) {
+      console.error("Error al resolver justificación:", err);
+    }
+  };
 
   // Cálculo dinámico del Quorum
   const totalRegistered = attendanceList.length;
@@ -177,23 +265,32 @@ export default function AttendancePage() {
             </span>
             <h2 className="text-3xl font-bold mt-1">Registro de Asistencia</h2>
 
-            {/* Quorum Bar */}
-            <div className="flex items-center gap-4 mt-3 bg-[#1e40af]/10 border border-[#00288e]/20 rounded-full px-4 py-1 w-fit">
-              <div className="flex items-center gap-1">
-                <span className="font-bold text-[#00288e]">
-                  {quorumPercentage}%
+            {/* Quorum Bar & Pre-Quorum Badge */}
+            <div className="flex flex-wrap items-center gap-3 mt-3">
+              <div className="flex items-center gap-4 bg-[#1e40af]/10 border border-[#00288e]/20 rounded-full px-4 py-1 w-fit">
+                <div className="flex items-center gap-1">
+                  <span className="font-bold text-[#00288e]">
+                    {quorumPercentage}%
+                  </span>
+                  <span className="text-xs text-[#444653]">Quorum en Sala</span>
+                </div>
+                <div className="w-24 bg-[#e0e3e5] rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-[#00288e] h-full transition-all duration-300"
+                    style={{ width: `${quorumPercentage}%` }}
+                  ></div>
+                </div>
+                <span className="text-xs text-[#444653] font-medium">
+                  {presentCount} de {totalRegistered}
                 </span>
-                <span className="text-xs text-[#444653]">Quorum</span>
               </div>
-              <div className="w-32 bg-[#e0e3e5] rounded-full h-1.5 overflow-hidden">
-                <div
-                  className="bg-[#00288e] h-full transition-all duration-300"
-                  style={{ width: `${quorumPercentage}%` }}
-                ></div>
-              </div>
-              <span className="text-xs text-[#444653] font-medium">
-                {presentCount} de {totalRegistered} vecinos
-              </span>
+
+              {preQuorum && (
+                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-full px-3.5 py-1 text-xs text-emerald-800 font-semibold shadow-xs">
+                  <span className="material-symbols-outlined text-sm text-emerald-600">how_to_reg</span>
+                  <span>Pre-Quórum Web: <strong>{preQuorum.confirmados}</strong> confirmados ({preQuorum.porcentaje}%)</span>
+                </div>
+              )}
             </div>
 
             <p className="text-[#444653] text-base mt-2">
@@ -201,10 +298,22 @@ export default function AttendancePage() {
               vecinos y gestionar el quorum legal.
             </p>
           </div>
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setIsJustificacionesModalOpen(true)}
+              className="flex items-center gap-2 bg-[#00288e] text-white font-semibold text-sm px-5 py-3 rounded-lg shadow-sm hover:brightness-110 active:scale-95 transition-all cursor-pointer relative"
+            >
+              <span className="material-symbols-outlined">medical_information</span>
+              Bandeja de Licencias
+              {justificaciones.filter((j) => j.estado === "Pendiente").length > 0 && (
+                <span className="bg-amber-400 text-amber-950 text-xs font-black px-2 py-0.5 rounded-full shadow-xs">
+                  {justificaciones.filter((j) => j.estado === "Pendiente").length}
+                </span>
+              )}
+            </button>
             <button
               onClick={() => setIsFinesModalOpen(true)}
-              className="flex items-center gap-2 bg-[#ba1a1a] text-white font-semibold text-sm px-6 py-3 rounded-lg shadow-sm hover:brightness-110 active:scale-95 transition-all"
+              className="flex items-center gap-2 bg-[#ba1a1a] text-white font-semibold text-sm px-6 py-3 rounded-lg shadow-sm hover:brightness-110 active:scale-95 transition-all cursor-pointer"
             >
               <span className="material-symbols-outlined">gavel</span>
               Generar Multas Automáticas
@@ -393,6 +502,155 @@ export default function AttendancePage() {
                 className="w-full bg-[#e6e8ea] text-[#444653] font-semibold text-sm py-3 rounded-lg hover:bg-[#e0e3e5] transition-all"
               >
                 Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Bandeja de Licencias / Justificaciones */}
+      {isJustificacionesModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 my-8">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#dde1ff] text-[#00288e] flex items-center justify-center font-bold">
+                  <span className="material-symbols-outlined">medical_information</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Bandeja de Licencias e Inasistencias</h3>
+                  <p className="text-xs text-slate-500">Solicitudes de justificación enviadas por los vecinos</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsJustificacionesModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {justificaciones.length === 0 ? (
+              <div className="py-12 text-center text-slate-400">
+                <span className="material-symbols-outlined text-4xl mb-2 text-slate-300">event_available</span>
+                <p className="text-sm font-medium">No hay solicitudes de justificación registradas.</p>
+              </div>
+            ) : (
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                {justificaciones.map((j) => (
+                  <div
+                    key={j.id}
+                    className="p-4 rounded-xl border border-slate-200 bg-[#f7f9fb] hover:border-slate-300 transition-all space-y-3"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 text-sm">{j.vecino_nombre}</span>
+                          <span className="text-xs text-slate-500 font-medium">
+                            (Mz. {j.manzano || "-"} - Lote {j.lote || "-"})
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#00288e] font-semibold mt-0.5">
+                          Asamblea: {j.asamblea_nombre} {j.asamblea_fecha ? `• ${j.asamblea_fecha}` : ""}
+                        </p>
+                      </div>
+                      <span
+                        className={`text-xs font-bold px-2.5 py-1 rounded-full w-fit ${
+                          j.estado === "Aprobada"
+                            ? "bg-[#DCFCE7] text-[#166534]"
+                            : j.estado === "Rechazada"
+                            ? "bg-[#FEE2E2] text-[#ba1a1a]"
+                            : "bg-amber-100 text-amber-900"
+                        }`}
+                      >
+                        {j.estado}
+                      </span>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs text-slate-700 space-y-1">
+                      <p>
+                        <strong className="text-slate-900">Motivo:</strong> {j.motivo}
+                      </p>
+                      <p>
+                        <strong className="text-slate-900">Explicación:</strong> {j.descripcion || "Sin descripción adicional"}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      {j.documento_url ? (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewDocModal(j.documento_url || null)}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-[#00288e] hover:underline"
+                        >
+                          <span className="material-symbols-outlined text-sm">attachment</span>
+                          Ver Documento de Respaldo
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Sin archivo adjunto</span>
+                      )}
+
+                      {j.estado === "Pendiente" && (
+                        <div className="flex items-center gap-2 ml-auto">
+                          <button
+                            onClick={() => handleResolverJustificacion(j.id, "Rechazada")}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-[#ba1a1a] border border-[#ba1a1a]/40 hover:bg-[#FEE2E2] transition-colors"
+                          >
+                            Rechazar
+                          </button>
+                          <button
+                            onClick={() => handleResolverJustificacion(j.id, "Aprobada")}
+                            className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-[#006c49] hover:brightness-110 shadow-xs transition-colors flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-xs">check</span>
+                            Aprobar Licencia
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-6 pt-4 border-t border-slate-200 flex justify-end">
+              <button
+                onClick={() => setIsJustificacionesModalOpen(false)}
+                className="px-5 py-2 rounded-xl text-sm font-semibold text-slate-600 border border-slate-300 hover:bg-slate-100 transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Preview Documento */}
+      {previewDocModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="font-bold text-sm text-slate-900">Respaldo de Justificación</h4>
+              <button
+                onClick={() => setPreviewDocModal(null)}
+                className="p-1 text-slate-400 hover:text-slate-800"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="border border-slate-200 rounded-xl p-2 bg-slate-50 flex items-center justify-center max-h-96 overflow-auto">
+              <img
+                src={previewDocModal}
+                alt="Documento de justificación"
+                className="max-h-80 w-auto object-contain rounded-lg shadow-sm"
+              />
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setPreviewDocModal(null)}
+                className="px-4 py-1.5 bg-[#00288e] text-white rounded-lg text-xs font-bold"
+              >
+                Cerrar Vista Previa
               </button>
             </div>
           </div>
