@@ -497,7 +497,7 @@ export default function VecinoDashboardPage() {
             </button>
 
             <Link
-              href="/comunicados"
+              href="/vecino/comunicados"
               className="bg-white border border-[#c4c5d5] hover:border-[#00288e] p-5 rounded-2xl flex items-center gap-4 shadow-sm hover:shadow-md transition-all group"
             >
               <div className="w-12 h-12 rounded-xl bg-[#DCFCE7] text-[#166534] flex items-center justify-center group-hover:bg-[#166534] group-hover:text-white transition-all shrink-0">
@@ -603,7 +603,7 @@ export default function VecinoDashboardPage() {
               Avisos Oficiales de la OTB
             </h4>
             <Link
-              href="/comunicados"
+              href="/vecino/comunicados"
               className="text-xs font-bold text-[#00288e] hover:underline"
             >
               Ver cartelera →

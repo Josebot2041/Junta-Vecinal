@@ -18,11 +18,11 @@ const API = "http://localhost:5000/api";
 
 const CATEGORIAS = [
   "Todos",
-  "Urgentes",
-  "Kermesse",
-  "Convocatorias",
+  "Urgente",
+  "Convocatoria",
+  "Evento",
   "Deportes",
-  "Servicios",
+  "Informativo",
 ];
 
 export default function VecinoComunicadosPage() {
@@ -39,6 +39,7 @@ export default function VecinoComunicadosPage() {
     imagenUrl?: string | null;
     descripcion?: string;
     esCitacion?: boolean;
+    fecha?: string;
   }>({
     open: false,
     titulo: "",
@@ -55,21 +56,22 @@ export default function VecinoComunicadosPage() {
   });
   const [inscriptoExito, setInscriptoExito] = useState(false);
 
-  useEffect(() => {
-    const fetchComunicados = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`${API}/comunicados`);
-        if (res.ok) {
-          const data = await res.json();
-          setComunicados(data);
-        }
-      } catch (err) {
-        console.error("Error al cargar comunicados:", err);
-      } finally {
-        setLoading(false);
+  const fetchComunicados = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API}/comunicados`);
+      if (res.ok) {
+        const data: Comunicado[] = await res.json();
+        setComunicados(data);
       }
-    };
+    } catch (err) {
+      console.error("Error al cargar comunicados desde el backend:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchComunicados();
   }, []);
 
@@ -82,7 +84,7 @@ export default function VecinoComunicadosPage() {
       link.click();
       document.body.removeChild(link);
     } else {
-      alert(`Iniciando descarga de: ${archivoNombre}`);
+      alert(`Iniciando descarga del documento: ${archivoNombre}`);
     }
   };
 
@@ -99,26 +101,44 @@ export default function VecinoComunicadosPage() {
         telefono: "",
         categoria: "Varones Libre",
       });
-      alert("¡Equipo registrado con éxito para el Torneo Relámpago!");
+      alert("¡Equipo registrado con éxito para el Torneo de la OTB!");
     }, 1200);
   };
 
-  // Filtrado de comunicados
+  // Filtrado dinámico de comunicados cargados de la base de datos
   const comunicadosFiltrados = comunicados.filter((c) => {
+    const catLower = (c.categoria || "").toLowerCase();
+    const filtroLower = filtroCategoria.toLowerCase();
+
     const matchCat =
       filtroCategoria === "Todos" ||
-      c.categoria.toLowerCase().includes(filtroCategoria.toLowerCase()) ||
-      (filtroCategoria === "Urgentes" && (c.prioridad === "Urgente" || c.categoria === "Urgente"));
+      catLower.includes(filtroLower) ||
+      (filtroCategoria === "Urgente" && (c.prioridad === "Urgente" || catLower.includes("urgente"))) ||
+      (filtroCategoria === "Evento" && (catLower.includes("evento") || catLower.includes("kermesse"))) ||
+      (filtroCategoria === "Convocatoria" && catLower.includes("convocatoria"));
+
+    const searchLower = searchTerm.toLowerCase();
     const matchSearch =
-      c.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
+      (c.titulo || "").toLowerCase().includes(searchLower) ||
+      (c.descripcion || "").toLowerCase().includes(searchLower) ||
+      (c.categoria || "").toLowerCase().includes(searchLower);
+
     return matchCat && matchSearch;
   });
 
+  // Documento más reciente que tenga archivo o imagen para el visor de la barra lateral
+  const documentoDestacado =
+    comunicados.find((c) => c.imagen_url || c.archivo_nombre) || comunicados[0] || null;
+
+  // Lista de archivos recientes reales cargados por el administrador
+  const archivosRecientes = comunicados.filter(
+    (c) => c.archivo_nombre || c.imagen_url
+  );
+
   return (
-    <main className="max-w-[1280px] mx-auto p-4 md:p-8 min-h-screen">
+    <main className="max-w-[1280px] mx-auto p-4 md:p-8 min-h-screen space-y-6">
       {/* ── Page Header ── */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span
@@ -132,419 +152,302 @@ export default function VecinoComunicadosPage() {
             </h1>
           </div>
           <p className="text-[#444653] text-sm md:text-base max-w-2xl leading-relaxed">
-            Tablón oficial de la Directiva OTB: citaciones con sello, avisos de
-            servicios básicos, actividades comunales y documentos oficiales
-            escaneados.
+            Tablón oficial de la Directiva OTB Villa Calama: citaciones con sello, avisos de
+            servicios básicos, actividades comunales y documentos escaneados.
           </p>
         </div>
 
-        {/* Barra de Filtros */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-[#f2f4f6] p-1.5 rounded-2xl border border-[#c4c5d5]">
-          {CATEGORIAS.map((cat) => {
-            const isSelected = filtroCategoria === cat;
-            const isUrgente = cat === "Urgentes";
-            return (
-              <button
-                key={cat}
-                onClick={() => setFiltroCategoria(cat)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                  isSelected
-                    ? isUrgente
-                      ? "bg-[#ba1a1a] text-white shadow-sm"
-                      : "bg-[#00288e] text-white shadow-sm"
-                    : isUrgente
-                    ? "bg-[#ffdad6] text-[#ba1a1a] hover:bg-[#ffdad6]/80"
-                    : "text-[#444653] hover:bg-white"
-                }`}
-              >
-                {isUrgente && (
-                  <span className="material-symbols-outlined text-sm">
-                    priority_high
-                  </span>
-                )}
-                <span>{cat}</span>
-              </button>
-            );
-          })}
+        {/* Buscador y Filtros */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#757684] text-sm">
+              search
+            </span>
+            <input
+              type="text"
+              placeholder="Buscar comunicado..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-3 py-1.5 bg-[#f2f4f6] border border-[#c4c5d5] rounded-xl text-xs outline-none focus:border-[#00288e] focus:bg-white transition-all w-full sm:w-48"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 bg-[#f2f4f6] p-1.5 rounded-2xl border border-[#c4c5d5]">
+            {CATEGORIAS.map((cat) => {
+              const isSelected = filtroCategoria === cat;
+              const isUrgente = cat === "Urgente";
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setFiltroCategoria(cat)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    isSelected
+                      ? isUrgente
+                        ? "bg-[#ba1a1a] text-white shadow-sm"
+                        : "bg-[#00288e] text-white shadow-sm"
+                      : isUrgente
+                      ? "bg-[#ffdad6] text-[#ba1a1a] hover:bg-[#ffdad6]/80"
+                      : "text-[#444653] hover:bg-white"
+                  }`}
+                >
+                  {isUrgente && (
+                    <span className="material-symbols-outlined text-sm">
+                      priority_high
+                    </span>
+                  )}
+                  <span>{cat}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* ── Bento Grid Layout ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* COLUMNA PRINCIPAL: FEED DE COMUNICADOS (8 columnas) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* COLUMNA PRINCIPAL: FEED DINÁMICO DE COMUNICADOS (8 columnas) */}
         <div className="lg:col-span-8 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-[#191c1e] flex items-center gap-2">
               <span className="material-symbols-outlined text-[#00288e]">
                 campaign
               </span>
-              Comunicados Oficiales Recientes
+              Comunicados Oficiales
             </h2>
-            <span className="text-xs text-[#757684] font-semibold">
-              {comunicados.length > 0
-                ? `${comunicados.length} anuncios vigentes`
-                : "Tablón activo"}
+            <span className="text-xs text-[#757684] font-semibold bg-[#f2f4f6] px-3 py-1 rounded-full border border-[#c4c5d5]">
+              {loading
+                ? "Actualizando..."
+                : `${comunicadosFiltrados.length} ${
+                    comunicadosFiltrados.length === 1 ? "publicación" : "publicaciones"
+                  }`}
             </span>
           </div>
 
-          {/* 1. TARJETA DESTACADA: AVISO URGENTE SEMAPA */}
-          <article className="bg-white rounded-2xl border-2 border-red-300 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-            <div className="p-5 md:p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-[#ffdad6] flex items-center justify-center shrink-0">
-                    <span
-                      className="material-symbols-outlined text-[#ba1a1a] text-2xl"
-                      style={{ fontVariationSettings: '"FILL" 1' }}
-                    >
-                      water_drop
+          {/* SKELETON LOADER */}
+          {loading && (
+            <div className="space-y-4">
+              {[1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl border border-[#c4c5d5] p-6 animate-pulse space-y-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-slate-200"></div>
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 bg-slate-200 rounded w-1/4"></div>
+                      <div className="h-5 bg-slate-200 rounded w-3/4"></div>
+                    </div>
+                  </div>
+                  <div className="h-16 bg-slate-100 rounded"></div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ESTADO VACÍO */}
+          {!loading && comunicadosFiltrados.length === 0 && (
+            <div className="bg-white rounded-2xl border border-[#c4c5d5] p-12 text-center shadow-xs">
+              <div className="w-16 h-16 rounded-full bg-[#dde1ff] text-[#00288e] flex items-center justify-center mx-auto mb-3">
+                <span className="material-symbols-outlined text-3xl">inbox</span>
+              </div>
+              <h3 className="font-bold text-base text-[#191c1e]">
+                No hay comunicados en esta categoría
+              </h3>
+              <p className="text-xs text-[#757684] max-w-sm mx-auto mt-1">
+                La directiva de la OTB no ha publicado avisos bajo este filtro o término de búsqueda.
+              </p>
+              {filtroCategoria !== "Todos" && (
+                <button
+                  onClick={() => setFiltroCategoria("Todos")}
+                  className="mt-4 px-4 py-2 bg-[#00288e] text-white rounded-xl text-xs font-bold hover:bg-[#1e40af] transition-colors cursor-pointer"
+                >
+                  Ver todos los comunicados
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* RENDERIZADO DINÁMICO DE COMUNICADOS DE LA BASE DE DATOS */}
+          {!loading &&
+            comunicadosFiltrados.map((c) => {
+              const esUrgente =
+                c.prioridad === "Urgente" ||
+                c.prioridad === "Alta" ||
+                c.categoria.toLowerCase().includes("urgente");
+              const esDeporte =
+                c.categoria.toLowerCase().includes("deporte") ||
+                c.titulo.toLowerCase().includes("fútbol") ||
+                c.titulo.toLowerCase().includes("campeonato");
+
+              const fechaFormateada = new Date(c.creado_en).toLocaleDateString("es-ES", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              });
+
+              return (
+                <article
+                  key={c.id}
+                  className={`bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-all p-5 md:p-6 space-y-4 ${
+                    esUrgente
+                      ? "border-2 border-red-300 ring-1 ring-red-100"
+                      : "border border-[#c4c5d5]"
+                  }`}
+                >
+                  {/* Barra superior con Badges (Categoría a la izquierda, Fecha a la derecha) */}
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-3 py-1 rounded-xl text-xs font-bold ${
+                          esUrgente
+                            ? "bg-red-100 text-red-800 border border-red-200"
+                            : "bg-[#dde1ff] text-[#00288e] border border-[#00288e]/15"
+                        }`}
+                      >
+                        {c.categoria}
+                      </span>
+                      {c.prioridad && c.prioridad !== "Normal" && (
+                        <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+                          {c.prioridad}
+                        </span>
+                      )}
+                    </div>
+
+                    <span className="text-xs text-[#757684] font-medium flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm text-[#757684]">
+                        calendar_today
+                      </span>
+                      {fechaFormateada}
                     </span>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="px-3 py-0.5 bg-[#ba1a1a] text-white text-[11px] font-extrabold rounded-full">
-                        Aviso Urgente
+
+                  {/* Título institucional */}
+                  <h3 className="text-lg md:text-xl font-bold text-[#191c1e] tracking-tight leading-snug">
+                    {c.titulo}
+                  </h3>
+
+                  {/* Imagen / Documento con tamaño determinado y visible al 100% (sin recortes) */}
+                  {c.imagen_url && (
+                    <div className="w-full flex items-center justify-center bg-[#f8fafc] border border-slate-200/80 rounded-2xl p-3 my-2 overflow-hidden shadow-2xs group relative">
+                      <img
+                        src={c.imagen_url}
+                        alt={c.titulo}
+                        className="max-h-[380px] sm:max-h-[420px] w-auto max-w-full object-contain rounded-xl transition-transform duration-300 group-hover:scale-[1.01]"
+                      />
+                      <button
+                        onClick={() =>
+                          setViewerModal({
+                            open: true,
+                            titulo: c.titulo,
+                            archivoNombre: c.archivo_nombre || `${c.titulo}.jpg`,
+                            imagenUrl: c.imagen_url,
+                            descripcion: c.descripcion,
+                            fecha: c.creado_en,
+                          })
+                        }
+                        className="absolute bottom-4 right-4 bg-black/60 hover:bg-[#00288e] text-white p-2 rounded-xl backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1.5 text-xs font-semibold shadow-md cursor-pointer"
+                        title="Pantalla completa"
+                      >
+                        <span className="material-symbols-outlined text-sm">fullscreen</span>
+                        <span>Ampliar</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Texto del Comunicado */}
+                  <p className="text-sm text-[#444653] leading-relaxed whitespace-pre-line">
+                    {c.descripcion}
+                  </p>
+
+                  {/* Badge de fecha de evento si existe */}
+                  {c.fecha_evento && (
+                    <div className="bg-[#dde1ff]/30 rounded-xl p-3 flex items-center gap-2.5 border border-[#00288e]/15 text-xs font-semibold text-[#00288e]">
+                      <span className="material-symbols-outlined text-base">
+                        event_upcoming
                       </span>
-                      <span className="px-2 py-0.5 bg-[#e0e3e5] text-[#191c1e] text-[11px] font-bold rounded">
-                        SEMAPA
+                      <span>
+                        <strong>Fecha programada:</strong> {c.fecha_evento}
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-[#191c1e]">
-                      Corte Imprevisto de Agua Potable - Red Matriz
-                    </h3>
+                  )}
+
+                  {/* Archivo adjunto oficial si no tiene imagen */}
+                  {c.archivo_nombre && !c.imagen_url && (
+                    <div className="bg-[#f2f4f6] border border-[#c4c5d5] rounded-xl p-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 truncate">
+                        <span className="material-symbols-outlined text-[#00288e] text-xl shrink-0">
+                          description
+                        </span>
+                        <span className="text-xs font-bold text-[#191c1e] truncate">
+                          {c.archivo_nombre}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDownload(c.archivo_nombre || "archivo.pdf")}
+                        className="px-3 py-1.5 bg-[#00288e] text-white rounded-lg text-xs font-bold hover:bg-[#1e40af] flex items-center gap-1 shrink-0 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm">download</span>
+                        Descargar
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Barra de acciones inferior: diseño propio y exclusivo para la OTB */}
+                  <div className="pt-3 border-t border-[#c4c5d5]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 text-[#757684]">
+                      <div className="w-7 h-7 rounded-lg bg-[#dde1ff] text-[#00288e] flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-sm">verified_user</span>
+                      </div>
+                      <span className="font-medium text-[11px] truncate max-w-[220px]">
+                        {c.archivo_nombre ? c.archivo_nombre : "Directiva OTB Villa Calama"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() =>
+                          setViewerModal({
+                            open: true,
+                            titulo: c.titulo,
+                            archivoNombre: c.archivo_nombre || `${c.titulo}.jpg`,
+                            imagenUrl: c.imagen_url,
+                            descripcion: c.descripcion,
+                            fecha: c.creado_en,
+                          })
+                        }
+                        className="px-4 py-2 bg-white hover:bg-[#f2f4f6] text-[#00288e] border border-[#c4c5d5] hover:border-[#00288e] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs hover:shadow-sm"
+                      >
+                        <span className="material-symbols-outlined text-sm">visibility</span>
+                        <span>Ver en Grande</span>
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          handleDownload(
+                            c.archivo_nombre || `${c.titulo}.jpg`,
+                            c.imagen_url
+                          )
+                        }
+                        className="px-4 py-2 bg-[#00288e] hover:bg-[#1e40af] text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-98"
+                      >
+                        <span className="material-symbols-outlined text-sm">download</span>
+                        <span>Descargar</span>
+                      </button>
+
+                      {esDeporte && (
+                        <button
+                          onClick={() => setInscribirModal(true)}
+                          className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer shrink-0"
+                        >
+                          <span className="material-symbols-outlined text-sm">sports_soccer</span>
+                          <span>Inscribir Equipo</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <span className="text-xs text-[#757684] font-medium shrink-0">
-                  Hoy
-                </span>
-              </div>
-
-              <p className="text-sm text-[#444653] mb-4 leading-relaxed">
-                Por rotura de matriz principal en la intersección de{" "}
-                <strong className="text-[#191c1e]">
-                  Av. Panamericana y Villa Calama
-                </strong>
-                , SEMAPA suspenderá el suministro de agua potable hoy desde las
-                10:00 hasta las 18:30 para trabajos de reparación de emergencia.
-              </p>
-
-              <div className="bg-[#f2f4f6] rounded-xl p-3 mb-4 flex items-center gap-3 border border-[#c4c5d5]">
-                <span className="material-symbols-outlined text-[#00288e] text-2xl shrink-0">
-                  local_shipping
-                </span>
-                <span className="text-xs text-[#191c1e]">
-                  <strong>Cisterna de auxilio:</strong> Plazuela Central a
-                  partir de las 14:00 (presentar carnet o boleta OTB para
-                  provisión por lote).
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pt-3 border-t border-[#c4c5d5] text-xs">
-                <span className="text-[#ba1a1a] font-bold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">
-                    schedule
-                  </span>
-                  Reanudación estimada: 18:30 hrs
-                </span>
-                <button
-                  onClick={() =>
-                    alert("Estado de cuadrilla SEMAPA: En trabajo activo sobre válvula principal.")
-                  }
-                  className="text-[#00288e] font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <span>Seguimiento de cuadrilla</span>
-                  <span className="material-symbols-outlined text-sm">
-                    arrow_forward
-                  </span>
-                </button>
-              </div>
-            </div>
-          </article>
-
-          {/* 2. TARJETA KERMESSE SOLIDARIA (CON AFICHE COLOR) */}
-          <article className="bg-white rounded-2xl border border-[#c4c5d5] shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-            <div className="grid grid-cols-1 md:grid-cols-12">
-              {/* Afiche / Banner */}
-              <div className="md:col-span-5 relative bg-slate-900 min-h-[220px]">
-                <div
-                  className="w-full h-full bg-cover bg-center"
-                  style={{
-                    backgroundImage:
-                      "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBQ831ptI3wqwKi2qjDI5inOV5SpRqJlvpHJ8lW7zIVusQ5XrfF2D9xSMiURhpFMT2qU8hGTZo2OujLGHRTrenhzmO1QtnVZ0Prr2Rsp-Djo52x7ImZT-9B4f8iEXmUHMCtul8k2YDj-esA-OxNvr_fBtDoMV5oJFbSqwqJcwIVOp2M4Womu4IpmJ2SBygCY3Im9JxJukL-i8-1Jg3wzv__rU-WIX_3hs41y5dG5RFx6uaNxsLWbTom47FjjNgS97U7ZJ6VEyvznsk')",
-                  }}
-                ></div>
-                <div className="absolute inset-0 bg-[#00288e]/40 flex flex-col justify-between p-4 text-white">
-                  <span className="px-3 py-1 bg-amber-100 text-amber-900 font-bold text-xs rounded-full w-max shadow-sm">
-                    Gran Kermesse
-                  </span>
-                  <div className="bg-white/95 backdrop-blur-md text-[#191c1e] p-2.5 rounded-xl text-center shadow-md">
-                    <p className="text-[11px] font-extrabold uppercase text-[#00288e]">
-                      Domingo 12 Noviembre
-                    </p>
-                    <p className="text-xs font-semibold">
-                      10:00 AM • Cancha Multifuncional
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contenido */}
-              <div className="md:col-span-7 p-5 md:p-6 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="px-3 py-0.5 bg-[#DCFCE7] text-[#166534] text-xs font-bold rounded-full">
-                      Kermesse Solidaria
-                    </span>
-                    <span className="text-xs text-[#757684]">Comunidad</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-[#191c1e] mb-2">
-                    Gran Kermesse Pro-Techo Cancha
-                  </h3>
-                  <p className="text-xs md:text-sm text-[#444653] leading-relaxed mb-3">
-                    Ven con toda la familia a apoyar la recaudación de fondos
-                    para el techado metálico de nuestra cancha poli-funcional.
-                    Delicioso menú tradicional cochabambino:
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    <span className="px-2.5 py-1 bg-[#f2f4f6] rounded-lg text-xs font-semibold text-[#191c1e]">
-                      🍖 Chicharrón tradicional (Bs 35)
-                    </span>
-                    <span className="px-2.5 py-1 bg-[#f2f4f6] rounded-lg text-xs font-semibold text-[#191c1e]">
-                      🥩 Pique Macho (Bs 35)
-                    </span>
-                    <span className="px-2.5 py-1 bg-[#f2f4f6] rounded-lg text-xs font-semibold text-[#191c1e]">
-                      🥤 Refresco de mocochinchi
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-3 mt-3 border-t border-[#c4c5d5]">
-                  <div className="flex items-center gap-1.5 text-xs text-[#444653] font-semibold">
-                    <span className="material-symbols-outlined text-[#166534] text-base">
-                      volunteer_activism
-                    </span>
-                    <span>Meta: Bs 18.000</span>
-                  </div>
-                  <button
-                    onClick={() =>
-                      handleDownload(
-                        "Afiche_Kermesse_ProTecho_OTB.jpg",
-                        "https://lh3.googleusercontent.com/aida-public/AB6AXuBQ831ptI3wqwKi2qjDI5inOV5SpRqJlvpHJ8lW7zIVusQ5XrfF2D9xSMiURhpFMT2qU8hGTZo2OujLGHRTrenhzmO1QtnVZ0Prr2Rsp-Djo52x7ImZT-9B4f8iEXmUHMCtul8k2YDj-esA-OxNvr_fBtDoMV5oJFbSqwqJcwIVOp2M4Womu4IpmJ2SBygCY3Im9JxJukL-i8-1Jg3wzv__rU-WIX_3hs41y5dG5RFx6uaNxsLWbTom47FjjNgS97U7ZJ6VEyvznsk"
-                      )
-                    }
-                    className="flex items-center gap-1.5 px-4 py-2 bg-[#00288e] text-white rounded-xl text-xs font-bold hover:bg-[#1e40af] transition-all cursor-pointer shadow-sm"
-                  >
-                    <span className="material-symbols-outlined text-sm">
-                      download
-                    </span>
-                    <span>Descargar Afiche</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </article>
-
-          {/* 3. CITACIÓN FIRMADA CON FACSÍMIL Y SELLO DE DIRECTIVA */}
-          <article className="bg-white rounded-2xl border border-[#c4c5d5] shadow-sm p-5 md:p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-[#dde1ff] flex items-center justify-center shrink-0 text-[#00288e]">
-                  <span className="material-symbols-outlined text-2xl">
-                    assignment
-                  </span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="px-3 py-0.5 bg-[#dde1ff] text-[#00288e] font-extrabold text-xs rounded-full">
-                      Convocatoria Oficial
-                    </span>
-                    <span className="px-2 py-0.5 bg-[#DCFCE7] text-[#166534] text-[11px] rounded font-bold uppercase">
-                      Firmada y Sellada
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-[#191c1e]">
-                    Citación: Marcha Pacífica por Alumbrado y Seguridad
-                  </h3>
-                </div>
-              </div>
-              <span className="text-xs text-[#757684]">20 Oct</span>
-            </div>
-
-            <p className="text-sm text-[#444653] mb-4 leading-relaxed">
-              La Directiva de la OTB convoca con carácter{" "}
-              <strong className="text-[#191c1e]">
-                obligatorio a 1 representante por lote
-              </strong>{" "}
-              a la movilización pacífica ante la Subalcaldía de Distrito para
-              exigir la reposición inmediata de luminarias LED en los Pasajes A,
-              B y C, y mayor patrullaje preventivo.
-            </p>
-
-            {/* Facsímil de documento sellado */}
-            <div className="bg-[#f2f4f6] border border-[#c4c5d5] rounded-xl p-4 mb-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-14 bg-white border border-[#c4c5d5] rounded-lg shadow-sm flex flex-col items-center justify-center text-center p-1 shrink-0">
-                  <span className="material-symbols-outlined text-[#00288e] text-lg">
-                    verified
-                  </span>
-                  <span className="text-[8px] font-black text-[#ba1a1a] uppercase leading-none mt-0.5">
-                    SELLO OTB
-                  </span>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-[#191c1e]">
-                    Resolución-OTB-Nro-042-2023.pdf
-                  </p>
-                  <p className="text-[11px] text-[#757684]">
-                    Documento oficial escaneado • Firmas Directiva y Control
-                    Social (1.8 MB)
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() =>
-                  setViewerModal({
-                    open: true,
-                    titulo: "Citación: Marcha Pacífica por Alumbrado y Seguridad",
-                    archivoNombre: "Resolución-OTB-Nro-042-2023.pdf",
-                    esCitacion: true,
-                    descripcion:
-                      "Resolución y citación firmada de la OTB Villa Calama para la marcha pacífica hacia la Subalcaldía.",
-                  })
-                }
-                className="w-full sm:w-auto px-4 py-2 border-2 border-[#00288e] text-[#00288e] bg-white hover:bg-[#dde1ff]/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-base">
-                  visibility
-                </span>
-                <span>Ver Documento Firmado</span>
-              </button>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[#757684]">
-              <span>📍 Punto de concentración: Sede OTB (08:00 AM)</span>
-              <span className="text-[#ba1a1a] font-bold">
-                Asistencia controlada con registro de firma
-              </span>
-            </div>
-          </article>
-
-          {/* 4. CONVOCATORIA CAMPEONATO DE FÚTBOL VECINAL */}
-          <article className="bg-white rounded-2xl border border-[#c4c5d5] shadow-sm p-5 md:p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 text-emerald-800">
-                  <span className="material-symbols-outlined text-2xl">
-                    sports_soccer
-                  </span>
-                </div>
-                <div>
-                  <span className="px-3 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full mb-1 inline-block">
-                    Deportes y Confraternización
-                  </span>
-                  <h3 className="text-xl font-bold text-[#191c1e]">
-                    Convocatoria Campeonato Vecinal "Copa Amistad OTB"
-                  </h3>
-                </div>
-              </div>
-              <span className="text-xs text-[#757684]">18 Oct</span>
-            </div>
-
-            <p className="text-sm text-[#444653] mb-4 leading-relaxed">
-              Quedan abiertas las inscripciones para el Torneo Relámpago de
-              Fútbol de Salón Inter-Manzanos. Categorías Varones Libre y Mujeres
-              Libre. Premios en trofeos y medallas.
-            </p>
-
-            <div className="grid grid-cols-3 gap-2 bg-[#f2f4f6] p-3 rounded-xl mb-4 text-xs">
-              <div className="border-r border-[#c4c5d5] pr-2">
-                <p className="text-[#757684] text-[10px]">Inscripción</p>
-                <p className="font-bold text-[#191c1e]">Bs 50 (Garantía)</p>
-              </div>
-              <div className="border-r border-[#c4c5d5] pr-2 pl-2">
-                <p className="text-[#757684] text-[10px]">Inicio Fixture</p>
-                <p className="font-bold text-[#191c1e]">Sábado 18 Nov</p>
-              </div>
-              <div className="pl-2">
-                <p className="text-[#757684] text-[10px]">Cierre listas</p>
-                <p className="font-bold text-[#00288e]">10 Noviembre</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() =>
-                  alert("Descargando el Fixture preliminar y reglamento de juego...")
-                }
-                className="px-4 py-2.5 bg-[#00288e] text-white rounded-xl text-xs font-bold hover:bg-[#1e40af] transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                <span className="material-symbols-outlined text-sm">
-                  download
-                </span>
-                <span>Descargar Fixture Preliminar</span>
-              </button>
-              <button
-                onClick={() => setInscribirModal(true)}
-                className="px-4 py-2.5 border border-[#c4c5d5] hover:border-[#00288e] text-[#191c1e] rounded-xl text-xs font-bold hover:bg-[#f2f4f6] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-sm">
-                  group_add
-                </span>
-                <span>Inscribir Equipo de Manzano</span>
-              </button>
-            </div>
-          </article>
-
-          {/* Comunicados adicionales de PostgreSQL si existen */}
-          {comunicadosFiltrados
-            .filter(
-              (c) =>
-                !c.titulo.includes("Corte Imprevisto") &&
-                !c.titulo.includes("Kermesse") &&
-                !c.titulo.includes("Marcha") &&
-                !c.titulo.includes("Campeonato")
-            )
-            .map((c) => (
-              <article
-                key={c.id}
-                className="bg-white rounded-2xl border border-[#c4c5d5] shadow-sm p-5 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#dde1ff] text-[#00288e]">
-                    {c.categoria}
-                  </span>
-                  <span className="text-xs text-[#757684]">
-                    {new Date(c.creado_en).toLocaleDateString()}
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-[#191c1e] mb-1">
-                  {c.titulo}
-                </h3>
-                <p className="text-xs md:text-sm text-[#444653] leading-relaxed mb-3">
-                  {c.descripcion}
-                </p>
-                {c.imagen_url && (
-                  <button
-                    onClick={() =>
-                      setViewerModal({
-                        open: true,
-                        titulo: c.titulo,
-                        archivoNombre: c.archivo_nombre || "archivo_adjunto.jpg",
-                        imagenUrl: c.imagen_url,
-                        descripcion: c.descripcion,
-                      })
-                    }
-                    className="px-3 py-1.5 bg-[#00288e] text-white rounded-lg text-xs font-bold hover:bg-[#1e40af] flex items-center gap-1 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-sm">
-                      visibility
-                    </span>
-                    Ver Cartel / Documento
-                  </button>
-                )}
-              </article>
-            ))}
+                </article>
+              );
+            })}
         </div>
 
         {/* ── COLUMNA LATERAL (4 columnas) ── */}
@@ -566,139 +469,153 @@ export default function VecinoComunicadosPage() {
             </div>
 
             <div className="p-4 bg-[#f7f9fb]">
-              <div className="bg-white border-2 border-[#c4c5d5] rounded-xl shadow-sm overflow-hidden relative group">
-                <div className="bg-[#e6e8ea] px-3 py-2 border-b border-[#c4c5d5] flex items-center justify-between text-[11px]">
-                  <span className="font-bold text-[#191c1e] truncate max-w-[180px]">
-                    Citacion_Oficial_Marcha.jpg
-                  </span>
-                  <div className="flex items-center gap-1.5 text-[#444653]">
-                    <span
+              {documentoDestacado ? (
+                <div className="bg-white border-2 border-[#c4c5d5] rounded-xl shadow-sm overflow-hidden relative group">
+                  <div className="bg-[#e6e8ea] px-3 py-2 border-b border-[#c4c5d5] flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-[#191c1e] truncate max-w-[180px]">
+                      {documentoDestacado.archivo_nombre || `${documentoDestacado.titulo}.jpg`}
+                    </span>
+                    <button
                       onClick={() =>
                         setViewerModal({
                           open: true,
-                          titulo: "Citación Oficial de Marcha",
-                          esCitacion: true,
+                          titulo: documentoDestacado.titulo,
+                          archivoNombre: documentoDestacado.archivo_nombre || "documento.pdf",
+                          imagenUrl: documentoDestacado.imagen_url,
+                          descripcion: documentoDestacado.descripcion,
+                          esCitacion: documentoDestacado.categoria.includes("Convocatoria"),
+                          fecha: documentoDestacado.creado_en,
                         })
                       }
                       title="Pantalla Completa"
                       className="material-symbols-outlined text-sm cursor-pointer hover:text-[#00288e]"
                     >
                       fullscreen
-                    </span>
-                  </div>
-                </div>
-
-                {/* Facsímil estilo papel antiguo con sello oficial */}
-                <div
-                  onClick={() =>
-                    setViewerModal({
-                      open: true,
-                      titulo: "Citación Oficial de Marcha",
-                      esCitacion: true,
-                    })
-                  }
-                  className="p-5 space-y-2 bg-amber-50/30 text-[#191c1e] font-serif text-[11px] leading-snug border-b border-dashed border-[#c4c5d5] cursor-pointer hover:bg-amber-50/60 transition-colors"
-                >
-                  <div className="text-center border-b border-slate-300 pb-2">
-                    <p className="font-bold text-[12px] text-[#00288e] uppercase tracking-wide">
-                      ORGANIZACIÓN TERRITORIAL DE BASE
-                    </p>
-                    <p className="text-[10px] text-[#757684]">
-                      Personería Jurídica N° 342/2011 • Cochabamba
-                    </p>
+                    </button>
                   </div>
 
-                  <p className="font-bold text-[11px] pt-1 text-center">
-                    CITACIÓN OFICIAL DE URGENCIA
-                  </p>
-                  <p className="text-justify text-[10px] text-slate-700">
-                    Por la presente se convoca con carácter obligatorio a los
-                    vecinos de los Manzanos 1 al 14 a la concentración por el
-                    alumbrado público y seguridad ciudadana...
-                  </p>
-
-                  <div className="flex items-end justify-between pt-4">
-                    <div className="text-center">
-                      <div className="w-16 h-8 border-b border-slate-800 mx-auto"></div>
-                      <p className="text-[9px] font-sans font-bold text-slate-900">
-                        Lic. Carlos Meneses
-                        <br />
-                        <span className="text-[#757684]">Presidente OTB</span>
+                  {/* Vista preliminar del documento o facsímil oficial */}
+                  {documentoDestacado.imagen_url ? (
+                    <div
+                      onClick={() =>
+                        setViewerModal({
+                          open: true,
+                          titulo: documentoDestacado.titulo,
+                          archivoNombre: documentoDestacado.archivo_nombre || "documento.jpg",
+                          imagenUrl: documentoDestacado.imagen_url,
+                          descripcion: documentoDestacado.descripcion,
+                          esCitacion: documentoDestacado.categoria.includes("Convocatoria"),
+                          fecha: documentoDestacado.creado_en,
+                        })
+                      }
+                      className="cursor-pointer max-h-52 overflow-hidden relative flex items-center justify-center bg-slate-50 p-2"
+                    >
+                      <img
+                        src={documentoDestacado.imagen_url}
+                        alt={documentoDestacado.titulo}
+                        className="max-h-48 w-auto max-w-full object-contain hover:opacity-90 transition-opacity rounded"
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() =>
+                        setViewerModal({
+                          open: true,
+                          titulo: documentoDestacado.titulo,
+                          archivoNombre: documentoDestacado.archivo_nombre || "documento.pdf",
+                          descripcion: documentoDestacado.descripcion,
+                          esCitacion: true,
+                          fecha: documentoDestacado.creado_en,
+                        })
+                      }
+                      className="p-5 space-y-2 bg-amber-50/40 text-[#191c1e] font-serif text-[11px] leading-snug border-b border-dashed border-[#c4c5d5] cursor-pointer hover:bg-amber-50/70 transition-colors"
+                    >
+                      <div className="text-center border-b border-slate-300 pb-2">
+                        <p className="font-bold text-[12px] text-[#00288e] uppercase tracking-wide">
+                          ORGANIZACIÓN TERRITORIAL DE BASE
+                        </p>
+                        <p className="text-[10px] text-[#757684]">
+                          Villa Calama • Cochabamba
+                        </p>
+                      </div>
+                      <p className="font-bold text-[11px] pt-1 text-center text-[#ba1a1a]">
+                        {documentoDestacado.titulo}
+                      </p>
+                      <p className="text-justify text-[10px] text-slate-700 line-clamp-3">
+                        {documentoDestacado.descripcion}
                       </p>
                     </div>
+                  )}
 
-                    {/* Sello circular OTB */}
-                    <div className="w-14 h-14 rounded-full border-2 border-[#ba1a1a] flex flex-col items-center justify-center text-center p-1 text-[#ba1a1a] rotate-[-12deg] shadow-xs">
-                      <span className="text-[7px] font-black uppercase leading-none">
-                        OTB COCHABAMBA
-                      </span>
-                      <span className="material-symbols-outlined text-sm">
-                        verified
-                      </span>
-                      <span className="text-[6px] font-bold">JUNTA VECINAL</span>
-                    </div>
+                  <div className="p-2.5 bg-white flex items-center justify-between text-xs border-t border-slate-100">
+                    <span className="text-[#757684]">Documento Oficial</span>
+                    <button
+                      onClick={() =>
+                        setViewerModal({
+                          open: true,
+                          titulo: documentoDestacado.titulo,
+                          archivoNombre: documentoDestacado.archivo_nombre || "documento.pdf",
+                          imagenUrl: documentoDestacado.imagen_url,
+                          descripcion: documentoDestacado.descripcion,
+                          esCitacion: documentoDestacado.categoria.includes("Convocatoria"),
+                          fecha: documentoDestacado.creado_en,
+                        })
+                      }
+                      className="text-[#00288e] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm">open_in_new</span>
+                      Abrir documento
+                    </button>
                   </div>
                 </div>
-
-                <div className="p-2.5 bg-white flex items-center justify-between text-xs">
-                  <span className="text-[#757684]">Página 1 de 1</span>
-                  <button
-                    onClick={() =>
-                      setViewerModal({
-                        open: true,
-                        titulo: "Citación Oficial de Marcha",
-                        esCitacion: true,
-                      })
-                    }
-                    className="text-[#00288e] font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-sm">
-                      open_in_new
-                    </span>
-                    Abrir documento
-                  </button>
-                </div>
-              </div>
+              ) : (
+                <p className="text-xs text-slate-400 text-center py-6">
+                  No hay documentos adjuntos recientes.
+                </p>
+              )}
             </div>
 
-            {/* Archivos Recientes */}
+            {/* Archivos Recientes de la Directiva dinámicos */}
             <div className="p-4 border-t border-[#c4c5d5] space-y-2">
               <p className="text-xs font-bold text-[#191c1e]">
                 Archivos Recientes de la Directiva:
               </p>
               <ul className="space-y-1.5 text-xs">
-                <li className="flex items-center justify-between p-2 hover:bg-[#f2f4f6] rounded-xl transition-colors">
-                  <span className="flex items-center gap-2 text-[#191c1e] truncate max-w-[200px]">
-                    <span className="material-symbols-outlined text-[#00288e] text-base">
-                      description
-                    </span>
-                    Acta_Asamblea_2026.pdf
-                  </span>
-                  <button
-                    onClick={() =>
-                      alert("Descargando Acta_Asamblea_2026.pdf...")
-                    }
-                    className="text-[#00288e] font-bold hover:underline cursor-pointer"
-                  >
-                    Ver
-                  </button>
-                </li>
-                <li className="flex items-center justify-between p-2 hover:bg-[#f2f4f6] rounded-xl transition-colors">
-                  <span className="flex items-center gap-2 text-[#191c1e] truncate max-w-[200px]">
-                    <span className="material-symbols-outlined text-[#00288e] text-base">
-                      description
-                    </span>
-                    Balance_ProTecho_Octubre.pdf
-                  </span>
-                  <button
-                    onClick={() =>
-                      alert("Descargando Balance_ProTecho_Octubre.pdf...")
-                    }
-                    className="text-[#00288e] font-bold hover:underline cursor-pointer"
-                  >
-                    Ver
-                  </button>
-                </li>
+                {archivosRecientes.length > 0 ? (
+                  archivosRecientes.map((c) => (
+                    <li
+                      key={c.id}
+                      className="flex items-center justify-between p-2 hover:bg-[#f2f4f6] rounded-xl transition-colors"
+                    >
+                      <span className="flex items-center gap-2 text-[#191c1e] truncate max-w-[200px]">
+                        <span className="material-symbols-outlined text-[#00288e] text-base shrink-0">
+                          description
+                        </span>
+                        <span className="truncate">
+                          {c.archivo_nombre || `${c.titulo}.pdf`}
+                        </span>
+                      </span>
+                      <button
+                        onClick={() =>
+                          setViewerModal({
+                            open: true,
+                            titulo: c.titulo,
+                            archivoNombre: c.archivo_nombre || `${c.titulo}.pdf`,
+                            imagenUrl: c.imagen_url,
+                            descripcion: c.descripcion,
+                          })
+                        }
+                        className="text-[#00288e] font-bold hover:underline cursor-pointer shrink-0 ml-2"
+                      >
+                        Ver
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-[11px] text-slate-400 italic py-1">
+                    No hay archivos adjuntos en el tablón.
+                  </li>
+                )}
               </ul>
             </div>
           </div>
@@ -712,9 +629,7 @@ export default function VecinoComunicadosPage() {
               <div className="flex items-center justify-between p-2 rounded-xl hover:bg-[#f2f4f6] transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-[#DCFCE7] flex items-center justify-center text-[#166534]">
-                    <span className="material-symbols-outlined text-lg">
-                      chat
-                    </span>
+                    <span className="material-symbols-outlined text-lg">chat</span>
                   </div>
                   <span className="text-xs font-semibold text-[#191c1e]">
                     Grupo WhatsApp OTB
@@ -728,37 +643,26 @@ export default function VecinoComunicadosPage() {
               <div className="flex items-center justify-between p-2 rounded-xl hover:bg-[#f2f4f6] transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-[#dde1ff] flex items-center justify-center text-[#00288e]">
-                    <span className="material-symbols-outlined text-lg">
-                      phone_in_talk
-                    </span>
+                    <span className="material-symbols-outlined text-lg">phone_in_talk</span>
                   </div>
-                  <span className="text-xs font-semibold text-[#191c1e]">
-                    Mesa Directiva
-                  </span>
+                  <span className="text-xs font-semibold text-[#191c1e]">Mesa Directiva</span>
                 </div>
                 <a
-                  href="tel:76912345"
+                  href="tel:76912245"
                   className="text-[#00288e] font-bold text-xs hover:underline"
                 >
-                  769-12345
+                  769-12245
                 </a>
               </div>
 
               <div className="flex items-center justify-between p-2 rounded-xl hover:bg-[#f2f4f6] transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-[#ffdad6] flex items-center justify-center text-[#ba1a1a]">
-                    <span className="material-symbols-outlined text-lg">
-                      local_police
-                    </span>
+                    <span className="material-symbols-outlined text-lg">local_police</span>
                   </div>
-                  <span className="text-xs font-semibold text-[#191c1e]">
-                    Policía Módulo 12
-                  </span>
+                  <span className="text-xs font-semibold text-[#191c1e]">Policía Módulo 12</span>
                 </div>
-                <a
-                  href="tel:110"
-                  className="text-[#ba1a1a] font-bold text-xs hover:underline"
-                >
+                <a href="tel:110" className="text-[#ba1a1a] font-bold text-xs hover:underline">
                   110
                 </a>
               </div>
@@ -775,21 +679,15 @@ export default function VecinoComunicadosPage() {
               className="fixed inset-0 bg-black/80 backdrop-blur-md"
               onClick={() => setViewerModal({ open: false, titulo: "" })}
             ></div>
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">
-              &#8203;
-            </span>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
 
             <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full border border-slate-700 relative z-10">
               {/* Barra del visor */}
               <div className="px-6 py-4 bg-[#191c1e] text-white flex items-center justify-between">
                 <div className="flex items-center gap-2 overflow-hidden">
-                  <span className="material-symbols-outlined text-[#6cf8bb]">
-                    description
-                  </span>
+                  <span className="material-symbols-outlined text-[#6cf8bb]">description</span>
                   <div className="truncate">
-                    <h3 className="text-sm font-bold truncate">
-                      {viewerModal.titulo}
-                    </h3>
+                    <h3 className="text-sm font-bold truncate">{viewerModal.titulo}</h3>
                     <p className="text-[11px] text-slate-400 truncate">
                       {viewerModal.archivoNombre || "Documento Oficial OTB Villa Calama"}
                     </p>
@@ -806,9 +704,7 @@ export default function VecinoComunicadosPage() {
                     }
                     className="px-3 py-1.5 bg-[#00288e] text-white rounded-lg text-xs font-semibold hover:bg-[#1e40af] flex items-center gap-1 cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-sm">
-                      download
-                    </span>
+                    <span className="material-symbols-outlined text-sm">download</span>
                     Descargar
                   </button>
                   <button
@@ -845,19 +741,17 @@ export default function VecinoComunicadosPage() {
 
                     <div className="py-2 text-center">
                       <span className="px-4 py-1 bg-red-100 text-[#ba1a1a] text-xs font-sans font-extrabold rounded-full uppercase tracking-wider">
-                        CITACIÓN OFICIAL DE URGENCIA
+                        DOCUMENTO OFICIAL DE LA DIRECTIVA
                       </span>
                     </div>
 
-                    <p className="text-xs text-justify leading-relaxed">
-                      Por medio del presente documento, la Directiva de la OTB
-                      Villa Calama convoca a todos los propietarios y vecinos de
-                      los diferentes manzanos a la <strong>Marcha Pacífica</strong> convocada
-                      para el día miércoles a las 08:00 AM, con concentración en la Sede Comunal.
-                    </p>
+                    <h3 className="font-bold text-center text-sm text-slate-900">
+                      {viewerModal.titulo}
+                    </h3>
 
-                    <p className="text-xs text-justify leading-relaxed">
-                      <strong>Motivo:</strong> Exigir a la Subalcaldía la inmediata instalación de luminarias LED y red de seguridad ciudadana.
+                    <p className="text-xs text-justify leading-relaxed whitespace-pre-line">
+                      {viewerModal.descripcion ||
+                        "Documento emitido y homologado por el Directorio de la Junta Vecinal de la OTB Villa Calama para conocimiento de todos los propietarios y vecinos."}
                     </p>
 
                     <div className="flex items-center justify-around pt-8">
@@ -868,7 +762,9 @@ export default function VecinoComunicadosPage() {
                       </div>
 
                       <div className="w-20 h-20 rounded-full border-2 border-[#ba1a1a] flex flex-col items-center justify-center text-center p-1 text-[#ba1a1a] rotate-[-10deg]">
-                        <span className="text-[8px] font-black uppercase leading-none">OTB COCHABAMBA</span>
+                        <span className="text-[8px] font-black uppercase leading-none">
+                          OTB COCHABAMBA
+                        </span>
                         <span className="material-symbols-outlined text-lg">verified</span>
                         <span className="text-[7px] font-bold">JUNTA VECINAL</span>
                       </div>
@@ -889,16 +785,12 @@ export default function VecinoComunicadosPage() {
               className="fixed inset-0 bg-black/60 backdrop-blur-sm"
               onClick={() => setInscribirModal(false)}
             ></div>
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">
-              &#8203;
-            </span>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
 
             <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-[#c4c5d5] relative z-10 p-6">
               <div className="flex justify-between items-center mb-4 border-b border-[#c4c5d5] pb-3">
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-emerald-700">
-                    sports_soccer
-                  </span>
+                  <span className="material-symbols-outlined text-emerald-700">sports_soccer</span>
                   <h3 className="font-bold text-base text-[#191c1e]">
                     Inscripción de Equipo al Campeonato
                   </h3>
